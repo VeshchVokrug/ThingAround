@@ -419,3 +419,9 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+#Admins.json
+admins.json
+
+#Persistence
+Db/persistence

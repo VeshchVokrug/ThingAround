@@ -1,0 +1,35 @@
+﻿version: '3.8'
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: database
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./Db/persistence:/var/lib/postgresql/data
+      - ./Db/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - identity-network
+        
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    restart: always
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@gmail.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "5050:80"
+    networks:
+      - identity-network
+    depends_on:
+      - db
+    
+networks:
+  identity-network:
+    driver: bridge
