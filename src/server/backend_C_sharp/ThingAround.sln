@@ -4,9 +4,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "IdentityProfileService", "I
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{351EDCCF-AA0F-41A4-8B45-B49F848944F7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core", "Core\Core\Core.csproj", "{3EEFCD14-852E-4372-9E8E-1BA20ED76DF9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core", "Core\Core.csproj", "{3EEFCD14-852E-4372-9E8E-1BA20ED76DF9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProfileService", "IdentityProfileService\IdentityProfileService\IdentityProfileService.csproj", "{B11AFD18-DA67-4F67-A4D9-F5345FD979A7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProfileService", "IdentityProfileService\IdentityProfileService.csproj", "{B11AFD18-DA67-4F67-A4D9-F5345FD979A7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
