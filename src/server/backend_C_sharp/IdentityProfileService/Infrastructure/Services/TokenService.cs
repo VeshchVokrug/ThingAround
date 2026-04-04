@@ -85,7 +85,9 @@ public class TokenService : ITokenService
     public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
     {
         if (string.IsNullOrEmpty(token))
+        {
             return null;
+        }
 
         try
         {
@@ -100,7 +102,7 @@ public class TokenService : ITokenService
 
             return principal;
         }
-        catch (Exception e)
+        catch (Exception)
         {
             return null;
         }

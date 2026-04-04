@@ -21,9 +21,11 @@ public class ProfileManager : IProfileManager
     public async Task<ProfileDto> GetProfileAsync(Guid id, CancellationToken ct)
     {
         var profile = await _profileRepository.FindByAccountIdAsync(id, ct);
-        
+
         if (profile == null)
+        {
             throw new UserNotFoundException(id);
+        }
         
         return profile.ToDto();
     }
@@ -52,12 +54,16 @@ public class ProfileManager : IProfileManager
     public async Task AddFavoriteCategoryAsync(Guid id, List<string> favoriteCategories, CancellationToken ct)
     {
         var profile = await _profileRepository.FindByAccountIdAsync(id, ct);
-        
+
         if (profile == null)
+        {
             throw new UserNotFoundException(id);
-        
+        }
+
         if (favoriteCategories.Count == 0)
+        {
             throw new ArgumentException("At least one favorite category is required.", nameof(favoriteCategories));
+        }
         
         var newCategories = (profile.FavoriteCategories ?? Enumerable.Empty<string>())
             .Concat(favoriteCategories)
@@ -70,12 +76,16 @@ public class ProfileManager : IProfileManager
     public async Task RemoveFavoriteCategoryAsync(Guid id, List<string> favoriteCategories, CancellationToken ct)
     {
         var profile = await _profileRepository.FindByAccountIdAsync(id, ct);
-        
+
         if (profile == null)
+        {
             throw new UserNotFoundException(id);
+        }
         
         if (favoriteCategories.Count == 0)
+        {
             throw new ArgumentException("At least one favorite category is required.", nameof(favoriteCategories));
+        }
 
         var updatedCategories = new List<string>();
         
@@ -84,9 +94,11 @@ public class ProfileManager : IProfileManager
             updatedCategories = profile.FavoriteCategories
                 .Where(existing => !favoriteCategories.Contains(existing, StringComparer.OrdinalIgnoreCase))
                 .ToList();
-            
+
             if (updatedCategories.Count == profile.FavoriteCategories.Count)
+            {
                 return;
+            }
         }
         
         await _profileRepository.UpdateFavoriteCategoriesAsync(profile.Id, updatedCategories, ct);

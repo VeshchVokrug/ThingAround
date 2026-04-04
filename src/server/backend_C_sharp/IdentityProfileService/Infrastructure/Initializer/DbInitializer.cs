@@ -66,7 +66,9 @@ public static class DbInitializer
         foreach (var role in Enum.GetNames<Role>())
         {
             if (!await roleManager.RoleExistsAsync(role))
+            {
                 await roleManager.CreateAsync(new IdentityRole<Guid>(role));
+            }
         }
     }
 

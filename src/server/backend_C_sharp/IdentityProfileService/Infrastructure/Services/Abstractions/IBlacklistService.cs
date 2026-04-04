@@ -1,7 +1,9 @@
-﻿namespace IdentityProfileService.Infrastructure.Services.Abstractions;
+﻿using System.Security.Claims;
+
+namespace IdentityProfileService.Infrastructure.Services.Abstractions;
 
 public interface IBlacklistService
 {
-    Task BlacklistTokenAsync(string jti, TimeSpan expiration, CancellationToken ct = default);
+    Task BlacklistTokenAsync(ClaimsPrincipal userPrincipal, CancellationToken ct = default);
     Task<bool> IsBlacklistedAsync(string jti, CancellationToken ct = default);
 }

@@ -86,9 +86,14 @@ public class AuthService : IAuthService
         var user = await _userManager.FindByEmailAsync(email);
 
         if (user == null)
+        {
             throw new UserNotFoundException(email);
+        }
+            
         if (await _userManager.IsLockedOutAsync(user))
+        {
             throw new UserAccountBlocked(user.Id, email, user.LockoutReason ?? "Without reason");
+        }
         
         var isValidCred = await _userManager.CheckPasswordAsync(user, password);
         if (!isValidCred)
@@ -112,16 +117,22 @@ public class AuthService : IAuthService
     {
         var principal = _tokenService.GetPrincipalFromExpiredToken(accessToken);
         if (principal == null)
+        {
             throw new InvalidTokenException();
+        }
         
         var userIdStr = principal.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdStr, out var userId))
+        {
             throw new InvalidTokenException();
+        }
         
         var savedRefreshToken = await _refreshTokenRepository.GetByTokenAndUserIdAsync(userId, refreshToken, ct);
-        
+
         if (savedRefreshToken == null)
+        {
             throw new SessionExpiredException(); 
+        }
         
         if (savedRefreshToken.IsExpired)
         {
@@ -131,11 +142,13 @@ public class AuthService : IAuthService
         
         var user = await _userManager.FindByIdAsync(userIdStr);
         if (user == null)
+        {
             throw new UserNotFoundException(userId);
+        }
+        
+        await _blacklistService.BlacklistTokenAsync(principal, ct);
         
         await _refreshTokenRepository.DeleteByIdAsync(savedRefreshToken.Id, ct);
-    
-        _logger.LogInformation("User {UserId} successfully refreshed tokens", userId);
     
         return await CreateAuthResponseAsync(user, ct);
     }
@@ -149,24 +162,23 @@ public class AuthService : IAuthService
     /// <returns>True если сессия закончена, False в ином случае.</returns>
     public async Task LogoutAsync(string refreshToken, ClaimsPrincipal userPrincipal, CancellationToken ct)
     {
-        var jti = userPrincipal.FindFirstValue(JwtRegisteredClaimNames.Jti);
-        var exp = userPrincipal.FindFirstValue(JwtRegisteredClaimNames.Exp);
         var userIdStr = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        if (string.IsNullOrEmpty(jti) || string.IsNullOrEmpty(exp) || !Guid.TryParse(userIdStr, out var userId))
-            throw new InvalidTokenException();
-        
-        var expirationTime = DateTimeOffset.FromUnixTimeSeconds(long.Parse(exp));
-        var now = _timeProvider.GetUtcNow();
-        var remaining = expirationTime - now;
-        if (remaining > TimeSpan.Zero)
+        if (!Guid.TryParse(userIdStr, out var userId))
         {
-            await _blacklistService.BlacklistTokenAsync(jti, remaining, ct);
+            throw new InvalidTokenException();
         }
+        
+        await _blacklistService.BlacklistTokenAsync(userPrincipal, ct);
 
-        var refreshTokenEntity = await _refreshTokenRepository.GetAllByUserIdAsync(userId, ct);
+        var refreshTokenEntity = await _refreshTokenRepository.GetByTokenAndUserIdAsync(userId, refreshToken, ct);
 
-        await _refreshTokenRepository.DeleteRangeAsync(refreshTokenEntity, ct);
+        if (refreshTokenEntity == null)
+        {
+            throw new InvalidTokenException();
+        }
+        
+        await _refreshTokenRepository.DeleteByIdAsync(refreshTokenEntity.Id, ct);
     }
 
     private async Task<AuthTokenDto> CreateAuthResponseAsync(Account user, CancellationToken ct)
