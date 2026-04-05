@@ -58,7 +58,7 @@ public class Program
 
     private static void ConfigureInfrastructure(IServiceCollection services, IConfiguration configuration)
     {
-        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", false);
         
         var postgresConnString = configuration.GetConnectionString("PostgresConnectionString")
                                  ?? throw new NullReferenceException("Connection string 'PostgresConnectionString' not found.");

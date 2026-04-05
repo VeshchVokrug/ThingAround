@@ -1,13 +1,10 @@
 ﻿using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using IdentityProfileService.BLL;
-using IdentityProfileService.Dto;
 using IdentityProfileService.Grpc;
 using IdentityProfileService.Infrastructure.Services.Abstractions;
 using IdentityProfileService.Mapper;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 
 namespace IdentityProfileService.Presentation.gRPC;
 

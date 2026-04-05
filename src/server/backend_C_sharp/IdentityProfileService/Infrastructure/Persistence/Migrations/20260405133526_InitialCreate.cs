@@ -32,6 +32,7 @@ namespace IdentityProfileService.Infrastructure.Persistence.Migrations
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     role = table.Column<string>(type: "text", nullable: false),
+                    lockout_reason = table.Column<string>(type: "text", nullable: true),
                     user_name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     normalized_user_name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
@@ -166,9 +167,8 @@ namespace IdentityProfileService.Infrastructure.Persistence.Migrations
                     name = table.Column<string>(type: "text", nullable: false),
                     bio = table.Column<string>(type: "text", nullable: false),
                     avatar_url = table.Column<string>(type: "text", nullable: true),
-                    reputation = table.Column<decimal>(type: "numeric(3,2)", precision: 3, scale: 2, nullable: false),
-                    favorite_categories = table.Column<string>(type: "jsonb", nullable: true),
-                    version = table.Column<int>(type: "integer", nullable: false)
+                    reputation = table.Column<decimal>(type: "numeric(3,2)", precision: 3, scale: 2, nullable: true),
+                    favorite_categories = table.Column<string>(type: "jsonb", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -176,6 +176,27 @@ namespace IdentityProfileService.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "fk_profiles_asp_net_users_id",
                         column: x => x.id,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "refresh_tokens",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    token = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_refresh_tokens", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_refresh_tokens_asp_net_users_user_id",
+                        column: x => x.user_id,
                         principalTable: "AspNetUsers",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -217,6 +238,17 @@ namespace IdentityProfileService.Infrastructure.Persistence.Migrations
                 table: "AspNetUsers",
                 column: "normalized_user_name",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_refresh_tokens_token",
+                table: "refresh_tokens",
+                column: "token",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_refresh_tokens_user_id",
+                table: "refresh_tokens",
+                column: "user_id");
         }
 
         /// <inheritdoc />
@@ -239,6 +271,9 @@ namespace IdentityProfileService.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "profiles");
+
+            migrationBuilder.DropTable(
+                name: "refresh_tokens");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");

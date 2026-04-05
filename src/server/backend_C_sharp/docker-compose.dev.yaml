@@ -12,7 +12,6 @@ services:
       - "5432:5432"
     volumes:
       - ./Db/persistence:/var/lib/postgresql/data
-      - ./Db/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     networks:
       - thingaround-network
         

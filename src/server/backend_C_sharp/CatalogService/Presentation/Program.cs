@@ -1,0 +1,68 @@
+using Core.Caching;
+using Infrastructure.Initializer;
+using Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Serilog;
+using Serilog.Enrichers.Span;
+using Serilog.Events;
+
+namespace Presentation;
+
+public class Program
+{
+    public static async Task Main(string[] args)
+    {
+        ConfigureLogging();
+        
+        var builder = WebApplication.CreateBuilder(args);
+
+        builder.Host.UseSerilog();
+        
+        ConfigureInfrastructure(builder.Services, builder.Configuration);
+        
+        var app = builder.Build();
+        
+        await DbInitializer.InitializeAsync(app.Services);
+        
+        await app.RunAsync();
+    }
+    
+    private static void ConfigureInfrastructure(IServiceCollection services, IConfiguration configuration)
+    {
+        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", false);
+        
+        var postgresConnString = configuration.GetConnectionString("PostgresConnectionString")
+                                 ?? throw new NullReferenceException("Connection string 'PostgresConnectionString' not found.");
+
+        services.AddDbContext<CatalogDbContext>(options =>
+        {
+            options.UseNpgsql(postgresConnString, postgresOptions =>
+            {
+                postgresOptions.EnableRetryOnFailure(5);
+                postgresOptions.MigrationsHistoryTable("__EFMigrationsHistory", "public");
+            });
+            options.UseSnakeCaseNamingConvention();
+            options.EnableDetailedErrors();
+        });
+
+        services.AddRedisCache(options =>
+        {
+            options.ConnectionString = configuration.GetConnectionString("Redis") 
+                                       ?? throw new NullReferenceException("Connection string 'Redis' not found.");
+            
+            options.InstancePrefix = configuration.GetValue<string>("RedisOptions:InstancePrefix") ?? "Catalog";
+        });
+    }
+    
+    private static void ConfigureLogging()
+    {
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+            .MinimumLevel.Override("Grpc", LogEventLevel.Warning)
+            .Enrich.FromLogContext()
+            .Enrich.WithSpan()
+            .WriteTo.Console(outputTemplate: 
+                "[{Timestamp:HH:mm:ss} {Level:u3}] [{TraceId}] {Message:lj}{NewLine}{Exception}")
+            .CreateLogger();
+    }
+}
