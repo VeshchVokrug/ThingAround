@@ -1,14 +1,14 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Presentation", "Presentation\Presentation.csproj", "{1E173835-48A4-428D-9CB6-DA520BEF65E2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Presentation", "src\Presentation\Presentation.csproj", "{1E173835-48A4-428D-9CB6-DA520BEF65E2}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core", "..\Core\Core.csproj", "{D0015998-3E64-45F7-BC88-410EA2AB9193}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Domain", "Domain\Domain.csproj", "{572AD65D-E857-4201-AA29-28E4D2618DFA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Domain", "src\Domain\Domain.csproj", "{572AD65D-E857-4201-AA29-28E4D2618DFA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure", "Infrastructure\Infrastructure.csproj", "{2211B7E9-6BA2-43CD-8D6D-5408980D958B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure", "src\Infrastructure\Infrastructure.csproj", "{2211B7E9-6BA2-43CD-8D6D-5408980D958B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Application", "Application\Application.csproj", "{E9DC0772-0737-4F19-8140-6B2D2F5EE119}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Application", "src\Application\Application.csproj", "{078B4559-A199-4F3E-BACD-C39F4B458C2B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,9 +32,9 @@ Global
 		{2211B7E9-6BA2-43CD-8D6D-5408980D958B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2211B7E9-6BA2-43CD-8D6D-5408980D958B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2211B7E9-6BA2-43CD-8D6D-5408980D958B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E9DC0772-0737-4F19-8140-6B2D2F5EE119}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E9DC0772-0737-4F19-8140-6B2D2F5EE119}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E9DC0772-0737-4F19-8140-6B2D2F5EE119}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E9DC0772-0737-4F19-8140-6B2D2F5EE119}.Release|Any CPU.Build.0 = Release|Any CPU
+		{078B4559-A199-4F3E-BACD-C39F4B458C2B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{078B4559-A199-4F3E-BACD-C39F4B458C2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{078B4559-A199-4F3E-BACD-C39F4B458C2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{078B4559-A199-4F3E-BACD-C39F4B458C2B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

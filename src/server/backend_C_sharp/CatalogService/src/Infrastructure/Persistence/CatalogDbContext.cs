@@ -29,7 +29,8 @@ public class CatalogDbContext : DbContext
         
         builder.HasIndex(x => x.TitleSlug).IsUnique();
         
-        builder.HasIndex(x => new { x.CategorySlug, x.IsActive });
+        builder.HasIndex(x => new { x.CategorySlug, x.IsActive, x.DefaultPrice })
+            .HasDatabaseName("ix_rental_listings_filters");
         
         builder.OwnsOne(x => x.Contact, contact =>
         {
