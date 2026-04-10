@@ -39,6 +39,7 @@ public class Program
             options.UseNpgsql(postgresConnString, postgresOptions =>
             {
                 postgresOptions.EnableRetryOnFailure(5);
+                postgresOptions.MigrationsAssembly(typeof(CatalogDbContext).Assembly.GetName().Name);
                 postgresOptions.MigrationsHistoryTable("__EFMigrationsHistory", "public");
             });
             options.UseSnakeCaseNamingConvention();

@@ -19,7 +19,7 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
 
     private DateOnly Today => DateOnly.FromDateTime(_timeProvider.GetUtcNow().DateTime);
 
-    public async Task CreateAvailabilitySlotAsync(Guid listingId, int price, DateOnly date, CancellationToken ct)
+    public async Task CreateAvailabilitySlotAsync(Guid listingId, int price, DateOnly date, CancellationToken ct = default)
     {
         await _context.AvailabilitySlots.AddAsync(new AvailabilitySlot
         {
@@ -28,10 +28,12 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
             IsAvailable = true,
             Price = price
         }, ct);
+        
+        await _context.SaveChangesAsync(ct);
     }
 
     public async Task CreateInitialSlotsAsync(Guid listingId, int defaultPrice, IEnumerable<DateOnly> busyDates,
-        CancellationToken ct)
+        CancellationToken ct = default)
     {
         var busyDaysSet = new HashSet<DateOnly>(busyDates);
 
@@ -49,11 +51,11 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
             });
         }
 
-        _context.AvailabilitySlots.AddRange(slots);
+        await _context.AvailabilitySlots.AddRangeAsync(slots, ct);
         await _context.SaveChangesAsync(ct);
     }
 
-    public async Task<IEnumerable<AvailabilitySlotDto>> GetAvailabilitySlotsAsync(Guid listingId, CancellationToken ct)
+    public async Task<IEnumerable<AvailabilitySlotDto>> GetAvailabilitySlotsAsync(Guid listingId, CancellationToken ct = default)
     {
         var horizon = Today.AddDays(60);
 
@@ -73,7 +75,7 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
             .ToListAsync(ct);
     }
 
-    public async Task<bool> TryReserveSlotsAsync(Guid listingId, IEnumerable<DateOnly> dates, Guid bookingId, CancellationToken ct)
+    public async Task<bool> TryReserveSlotsAsync(Guid listingId, IEnumerable<DateOnly> dates, Guid bookingId, CancellationToken ct = default)
     {
         var datesList = dates as IReadOnlyCollection<DateOnly> ?? dates.ToList();
         
@@ -90,20 +92,25 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
         return busiedSlots == datesList.Count;
     }
 
-    public async Task CancelReservationAsync(Guid listingId, DateOnly date, CancellationToken ct)
+    public async Task CancelReservationAsync(Guid listingId, IEnumerable<DateOnly> dates,
+        Guid? bookingId = null, CancellationToken ct = default)
     {
-        await _context.AvailabilitySlots
-            .Where(s => 
-                s.ListingId == listingId 
-                && s.Date == date
-                && !s.IsAvailable
-                && s.BookingId == null)
-            .ExecuteUpdateAsync(sp => sp
-                .SetProperty(s => s.IsAvailable, true)
-                .SetProperty(s => s.ReservedAt, (DateTime?)null), ct);
+        var datesList = dates as IReadOnlyCollection<DateOnly> ?? dates.ToList();
+        if (datesList.Count == 0) return;
+
+        var query = _context.AvailabilitySlots
+            .Where(s => s.ListingId == listingId)
+            .Where(s => datesList.Contains(s.Date))
+            .Where(s => !s.IsAvailable)
+            .Where(s => s.BookingId == bookingId);
+
+        await query.ExecuteUpdateAsync(sp => sp
+            .SetProperty(s => s.IsAvailable, true)
+            .SetProperty(s => s.ReservedAt, (DateTime?)null)
+            .SetProperty(s => s.BookingId, (Guid?)null), ct);
     }
 
-    public async Task<bool> UpdateSlotPriceAsync(Guid listingId, DateOnly date, int newPrice, CancellationToken ct)
+    public async Task<bool> UpdateSlotPriceAsync(Guid listingId, DateOnly date, int newPrice, CancellationToken ct = default)
     {
         var updatedCount = await _context.AvailabilitySlots
             .Where(s => s.ListingId == listingId && s.Date == date)
@@ -113,7 +120,7 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
         return updatedCount > 0;
     }
 
-    public async Task<int> RemoveAvailabilitySlotAsync(Guid listingId, DateOnly date, CancellationToken ct)
+    public async Task<int> RemoveAvailabilitySlotAsync(Guid listingId, DateOnly date, CancellationToken ct = default)
     {
         var removedSlots = await _context.AvailabilitySlots
             .Where(s => 
