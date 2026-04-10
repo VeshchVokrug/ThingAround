@@ -76,11 +76,16 @@ namespace Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("category_slug");
 
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("city");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("timezone('utc', now())");
+                        .HasDefaultValueSql("now()");
 
                     b.Property<int>("DefaultPrice")
                         .HasColumnType("integer")
@@ -127,7 +132,7 @@ namespace Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("timezone('utc', now())");
+                        .HasDefaultValueSql("now()");
 
                     b.HasKey("Id")
                         .HasName("pk_rental_listings");
@@ -141,7 +146,7 @@ namespace Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_rental_listings_title_slug");
 
-                    b.HasIndex("CategorySlug", "IsActive", "DefaultPrice")
+                    b.HasIndex("City", "CategorySlug", "IsActive", "DefaultPrice")
                         .HasDatabaseName("ix_rental_listings_filters");
 
                     b.ToTable("rental_listings", (string)null);

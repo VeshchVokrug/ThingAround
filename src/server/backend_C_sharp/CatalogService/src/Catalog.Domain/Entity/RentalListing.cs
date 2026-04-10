@@ -10,6 +10,7 @@ public class RentalListing
     public string Description { get; set; }
     public List<string>? ImagesUrls { get; set; }
     public float OwnerRating { get; set; }
+    public string City { get; set; }
     public int DefaultPrice { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

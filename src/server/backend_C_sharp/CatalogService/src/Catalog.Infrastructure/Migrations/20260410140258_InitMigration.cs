@@ -41,10 +41,11 @@ namespace Infrastructure.Migrations
                     description = table.Column<string>(type: "text", nullable: false),
                     images_urls = table.Column<List<string>>(type: "text[]", nullable: true),
                     owner_rating = table.Column<float>(type: "real", nullable: false),
+                    city = table.Column<string>(type: "text", nullable: false),
                     default_price = table.Column<int>(type: "integer", nullable: false),
                     is_active = table.Column<bool>(type: "boolean", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "timezone('utc', now())"),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "timezone('utc', now())"),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
                     contact_manager_id = table.Column<Guid>(type: "uuid", nullable: false),
                     contact_person_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     contact_person_phone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
@@ -70,7 +71,7 @@ namespace Infrastructure.Migrations
             migrationBuilder.CreateIndex(
                 name: "ix_rental_listings_filters",
                 table: "rental_listings",
-                columns: new[] { "category_slug", "is_active", "default_price" });
+                columns: new[] { "city", "category_slug", "is_active", "default_price" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_rental_listings_search_vector",
