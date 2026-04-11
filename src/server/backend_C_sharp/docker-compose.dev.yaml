@@ -48,6 +48,8 @@ services:
     container_name: identity_profile_service
     ports:
       - "5000:8080"
+    restart: 
+      always
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - Kestrel__Endpoints__gRPC__Url=http://*:8080
