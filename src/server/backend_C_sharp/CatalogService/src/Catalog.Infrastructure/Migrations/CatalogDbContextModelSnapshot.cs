@@ -146,8 +146,11 @@ namespace Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_rental_listings_title_slug");
 
-                    b.HasIndex("City", "CategorySlug", "IsActive", "DefaultPrice")
+                    b.HasIndex("CategorySlug", "IsActive", "DefaultPrice")
                         .HasDatabaseName("ix_rental_listings_filters");
+
+                    b.HasIndex("City", "CategorySlug", "IsActive")
+                        .HasDatabaseName("ix_rental_listings_city_filters");
 
                     b.ToTable("rental_listings", (string)null);
                 });

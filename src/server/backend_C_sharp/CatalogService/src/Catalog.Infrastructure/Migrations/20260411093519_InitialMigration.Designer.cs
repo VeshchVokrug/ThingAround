@@ -14,8 +14,8 @@ using NpgsqlTypes;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(CatalogDbContext))]
-    [Migration("20260410140258_InitMigration")]
-    partial class InitMigration
+    [Migration("20260411093519_InitialMigration")]
+    partial class InitialMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -149,8 +149,11 @@ namespace Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_rental_listings_title_slug");
 
-                    b.HasIndex("City", "CategorySlug", "IsActive", "DefaultPrice")
+                    b.HasIndex("CategorySlug", "IsActive", "DefaultPrice")
                         .HasDatabaseName("ix_rental_listings_filters");
+
+                    b.HasIndex("City", "CategorySlug", "IsActive")
+                        .HasDatabaseName("ix_rental_listings_city_filters");
 
                     b.ToTable("rental_listings", (string)null);
                 });

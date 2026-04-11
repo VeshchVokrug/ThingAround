@@ -28,12 +28,12 @@ public class AvailabilitySlotRepositoryTests
     {
         // Arrange
         using var context = _fixture.CreateContext();
-        var repo = CreateRepository(context);
+        var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var date = new DateOnly(2026, 5, 1);
 
         // Act
-        await repo.CreateAvailabilitySlotAsync(listingId, 500, date);
+        await sut.CreateAvailabilitySlotAsync(listingId, 500, date);
 
         // Assert
         var slot = await context.AvailabilitySlots.FirstOrDefaultAsync(s => s.ListingId == listingId);
@@ -47,7 +47,7 @@ public class AvailabilitySlotRepositoryTests
     {
         // Arrange
         using var context = _fixture.CreateContext();
-        var repo = CreateRepository(context);
+        var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
     
         var today = DateOnly.FromDateTime(_timeProvider.GetUtcNow().DateTime);
@@ -56,7 +56,7 @@ public class AvailabilitySlotRepositoryTests
         var busyDates = new List<DateOnly> { busyDate };
 
         // Act
-        await repo.CreateInitialSlotsAsync(listingId, 100, busyDates, CancellationToken.None);
+        await sut.CreateInitialSlotsAsync(listingId, 100, busyDates, CancellationToken.None);
 
         // Assert
         var slots = await context.AvailabilitySlots
@@ -76,7 +76,7 @@ public class AvailabilitySlotRepositoryTests
     {
         // Arrange
         using var context = _fixture.CreateContext();
-        var repo = CreateRepository(context);
+        var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var today = DateOnly.FromDateTime(_timeProvider.GetUtcNow().DateTime);
 
@@ -91,7 +91,7 @@ public class AvailabilitySlotRepositoryTests
         await context.SaveChangesAsync();
 
         // Act
-        var result = await repo.GetAvailabilitySlotsAsync(listingId);
+        var result = await sut.GetAvailabilitySlotsAsync(listingId);
 
         // Assert
         var availabilitySlotDtos = result as List<AvailabilitySlotDto> ?? result.ToList();
@@ -104,7 +104,7 @@ public class AvailabilitySlotRepositoryTests
     {
         // Arrange
         using var context = _fixture.CreateContext();
-        var repo = CreateRepository(context);
+        var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var bookingId = Guid.NewGuid();
         var date = new DateOnly(2026, 4, 15);
@@ -117,7 +117,7 @@ public class AvailabilitySlotRepositoryTests
         await context.SaveChangesAsync();
 
         // Act
-        var result = await repo.TryReserveSlotsAsync(listingId, [date], bookingId);
+        var result = await sut.TryReserveSlotsAsync(listingId, [date], bookingId);
 
         // Assert
         result.Should().BeTrue();
@@ -131,11 +131,36 @@ public class AvailabilitySlotRepositoryTests
     }
     
     [Fact]
+    public async Task CancelReservationsAsync_AsOwner_ShouldCancelSlot()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        var sut = CreateRepository(context);
+        var listingId = Guid.NewGuid();
+        var date = new DateOnly(2026, 4, 20);
+
+        context.AvailabilitySlots.Add(new AvailabilitySlot 
+        { 
+            ListingId = listingId, Date = date, IsAvailable = false
+        });
+        await context.SaveChangesAsync();
+
+        // Act
+        await sut.CancelReservationAsync(listingId, [date]);
+
+        // Assert
+        using var assertContext = _fixture.CreateContext();
+        var slot = await assertContext.AvailabilitySlots
+            .FirstAsync(s => s.ListingId == listingId);
+        slot.IsAvailable.Should().BeTrue();
+    }
+    
+    [Fact]
     public async Task CancelReservationsAsync_AsOwner_ShouldNotCancelClientBooking()
     {
         // Arrange
         using var context = _fixture.CreateContext();
-        var repo = CreateRepository(context);
+        var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var date = new DateOnly(2026, 4, 20);
         var clientBookingId = Guid.NewGuid();
@@ -147,7 +172,7 @@ public class AvailabilitySlotRepositoryTests
         await context.SaveChangesAsync();
 
         // Act
-        await repo.CancelReservationAsync(listingId, [date]);
+        await sut.CancelReservationAsync(listingId, [date]);
 
         // Assert
         using var assertContext = _fixture.CreateContext();
@@ -160,7 +185,7 @@ public class AvailabilitySlotRepositoryTests
     {
         // Arrange
         using var context = _fixture.CreateContext();
-        var repo = CreateRepository(context);
+        var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var targetBookingId = Guid.NewGuid();
         var otherBookingId = Guid.NewGuid();
@@ -174,11 +199,13 @@ public class AvailabilitySlotRepositoryTests
         await context.SaveChangesAsync();
 
         // Act
-        await repo.CancelReservationAsync(listingId, [date1, date2], targetBookingId);
+        await sut.CancelReservationAsync(listingId, [date1, date2], targetBookingId);
 
         // Assert
         using var assertContext = _fixture.CreateContext();
-        var slots = await assertContext.AvailabilitySlots.OrderBy(s => s.Date).ToListAsync();
+        var slots = await assertContext.AvailabilitySlots
+            .Where(s => s.ListingId == listingId)
+            .OrderBy(s => s.Date).ToListAsync();
     
         slots[0].IsAvailable.Should().BeTrue();
         slots[1].IsAvailable.Should().BeFalse();
@@ -189,14 +216,14 @@ public class AvailabilitySlotRepositoryTests
     {
         // Arrange
         using var context = _fixture.CreateContext();
-        var repo = CreateRepository(context);
+        var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var date = new DateOnly(2026, 5, 1);
         context.AvailabilitySlots.Add(new AvailabilitySlot { ListingId = listingId, Date = date, Price = 50 });
         await context.SaveChangesAsync();
 
         // Act
-        var result = await repo.UpdateSlotPriceAsync(listingId, date, 150);
+        var result = await sut.UpdateSlotPriceAsync(listingId, date, 150);
 
         // Assert
         result.Should().BeTrue();
@@ -210,14 +237,14 @@ public class AvailabilitySlotRepositoryTests
     {
         // Arrange
         using var context = _fixture.CreateContext();
-        var repo = CreateRepository(context);
+        var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var date = new DateOnly(2026, 5, 1);
         context.AvailabilitySlots.Add(new AvailabilitySlot { ListingId = listingId, Date = date, Price = 50 });
         await context.SaveChangesAsync();
 
         // Act
-        var count = await repo.RemoveAvailabilitySlotAsync(listingId, date);
+        var count = await sut.RemoveAvailabilitySlotAsync(listingId, date);
 
         // Assert
         count.Should().Be(1);

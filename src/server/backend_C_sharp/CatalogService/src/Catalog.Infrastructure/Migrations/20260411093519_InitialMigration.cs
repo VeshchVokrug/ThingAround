@@ -8,7 +8,7 @@ using NpgsqlTypes;
 namespace Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitMigration : Migration
+    public partial class InitialMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -69,9 +69,14 @@ namespace Infrastructure.Migrations
                 columns: new[] { "listing_id", "date", "is_available" });
 
             migrationBuilder.CreateIndex(
+                name: "ix_rental_listings_city_filters",
+                table: "rental_listings",
+                columns: new[] { "city", "category_slug", "is_active" });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_rental_listings_filters",
                 table: "rental_listings",
-                columns: new[] { "city", "category_slug", "is_active", "default_price" });
+                columns: new[] { "category_slug", "is_active", "default_price" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_rental_listings_search_vector",
