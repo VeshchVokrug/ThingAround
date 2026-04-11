@@ -11,12 +11,6 @@
       <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
       <PackageReference Include="FluentValidation" Version="12.1.1" />
       <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
-      <PackageReference Include="Google.Protobuf" Version="3.34.1" />
-      <PackageReference Include="Grpc.AspNetCore" Version="2.76.0" />
-      <PackageReference Include="Grpc.Tools" Version="2.78.0">
-        <PrivateAssets>all</PrivateAssets>
-        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      </PackageReference>
       <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
       <PackageReference Include="Microsoft.AspNetCore.Grpc.JsonTranscoding" Version="10.0.0" />
       <PackageReference Include="Microsoft.AspNetCore.Grpc.Swagger" Version="0.10.0" />
@@ -36,12 +30,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Core\Core.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <Protobuf Include="Protos\IdentityProfileService.proto" ProtoRoot="Protos\" GrpcServices="Server">
-            <AdditionalImportDirs>Protos</AdditionalImportDirs>
-        </Protobuf>
+      <ProjectReference Include="..\Protos\Protos.csproj" />
     </ItemGroup>
     
     <ItemGroup>

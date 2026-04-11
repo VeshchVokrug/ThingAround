@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Core.Caching;
+using Core.Contracts;
 using FluentValidation;
 using IdentityProfileService.BLL;
 using IdentityProfileService.BLL.Abstractions;
@@ -79,7 +80,7 @@ public class Program
             options.ConnectionString = configuration.GetConnectionString("Redis") 
                 ?? throw new NullReferenceException("Connection string 'Redis' not found.");
             
-            options.InstancePrefix = configuration.GetValue<string>("RedisOptions:InstancePrefix") ?? "identity";
+            options.InstancePrefix = RedisKeyPrefixes.IdentityProfilePrefix;
         });
     }
 

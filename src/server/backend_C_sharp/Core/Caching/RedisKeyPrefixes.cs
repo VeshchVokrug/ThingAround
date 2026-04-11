@@ -1,0 +1,7 @@
+﻿namespace Core.Caching;
+
+public static class RedisKeyPrefixes
+{
+    public const string IdentityProfilePrefix = "identity:";
+    public const string CatalogPrefix = "catalog:";
+}
