@@ -40,6 +40,27 @@ services:
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     networks:
       - thingaround-network
+
+  identity-profile:
+    build:
+      context: .
+      dockerfile: IdentityProfileService/Dockerfile
+    container_name: identity_profile_service
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Kestrel__Endpoints__gRPC__Url=http://*:8080
+      - ConnectionStrings__PostgresConnectionString=Host=db;Port=5432;Database=identity_db;Username=admin;Password=admin
+      - ConnectionStrings__Redis=redis:6379,abortConnect=false
+    volumes:
+      - ./IdentityProfileService/Configs:/app/Configs:ro
+      - ./Core/Configs:/app/Core/Configs:ro
+    networks:
+      - thingaround-network
+    depends_on:
+      - db
+      - redis
     
 networks:
   thingaround-network:
