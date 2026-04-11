@@ -1,0 +1,67 @@
+﻿version: '3.8'
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: database
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./Db/persistence:/var/lib/postgresql/data
+    networks:
+      - thingaround-network
+        
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    restart: always
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@gmail.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "5050:80"
+    networks:
+      - thingaround-network
+    depends_on:
+      - db
+    
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./Redis/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./Redis/Data:/data
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    networks:
+      - thingaround-network
+
+  identity-profile:
+    build:
+      context: .
+      dockerfile: IdentityProfileService/Dockerfile
+    container_name: identity_profile_service
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Kestrel__Endpoints__gRPC__Url=http://*:8080
+      - ConnectionStrings__PostgresConnectionString=Host=db;Port=5432;Database=identity_db;Username=admin;Password=admin
+      - ConnectionStrings__Redis=redis:6379,abortConnect=false
+    volumes:
+      - ./IdentityProfileService/Configs:/app/Configs:ro
+      - ./Core/Configs:/app/Core/Configs:ro
+    networks:
+      - thingaround-network
+    depends_on:
+      - db
+      - redis
+    
+networks:
+  thingaround-network:
+    driver: bridge
