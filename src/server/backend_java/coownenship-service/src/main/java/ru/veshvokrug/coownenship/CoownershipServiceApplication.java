@@ -1,4 +1,4 @@
-package ru.veshvokrug.coownership;
+package ru.veshvokrug.coownenship;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

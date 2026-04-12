@@ -1,10 +1,10 @@
-package ru.veshvokrug.coownership.controller;
+package ru.veshvokrug.coownenship.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-import ru.veshvokrug.coownership.controller.dto.AnnouncementResponseDto;
-import ru.veshvokrug.coownership.controller.dto.ShareResponseDto;
+import ru.veshvokrug.coownenship.controller.dto.AnnouncementResponseDto;
+import ru.veshvokrug.coownenship.controller.dto.ShareResponseDto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
