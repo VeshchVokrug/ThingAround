@@ -32,9 +32,9 @@ public static class ProfileMapper
         };
     }
 
-    public static ProfileResponse ToGrpc(this ProfileDto dto)
+    public static PersonalProfileResponse ToPersonalGrpc(this ProfileDto dto)
     {
-        var response = new ProfileResponse
+        var response = new PersonalProfileResponse
         {
             Id = dto.Id.ToString(),
             Reputation = (double)(dto.Reputation ?? 0)
@@ -48,6 +48,21 @@ public static class ProfileMapper
         {
             response.FavoriteCategories.AddRange(dto.FavoriteCategories);
         }
+
+        return response;
+    }
+
+    public static PublicProfileResponse ToPublicGrpc(this ProfileDto dto)
+    {
+        var response = new PublicProfileResponse
+        {
+            Id = dto.Id.ToString(),
+            Reputation = (double)(dto.Reputation ?? 0)
+        };
+        
+        if (dto.Name != null) response.Name = dto.Name;
+        if (dto.Bio != null) response.Bio = dto.Bio;
+        if (dto.AvatarUrl != null) response.AvatarUrl = dto.AvatarUrl;
 
         return response;
     }

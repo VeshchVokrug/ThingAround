@@ -61,6 +61,28 @@ services:
     depends_on:
       - db
       - redis
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Gateway/Dockerfile
+    container_name: gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - GrpcEndpoints__IdentityProfileService=http://identity-profile:8080
+      - ConnectionStrings__Redis=redis:6379,abortConnect=false
+      - Jwt__Issuer=ThingAround.IdentityServer
+      - Jwt__Audience=ThingAround.Client
+    volumes:
+      - ./Gateway/Configs:/app/Configs:ro
+    networks:
+      - thingaround-network
+    depends_on:
+      - identity-profile
+      - redis
     
 networks:
   thingaround-network:

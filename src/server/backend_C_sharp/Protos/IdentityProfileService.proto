@@ -14,13 +14,14 @@ service IdentityProfileInternal {
   rpc Logout(LogoutRequest) returns (google.protobuf.Empty);
 
   // --- Profile Section ---
-  rpc GetProfile(google.protobuf.Empty) returns (ProfileResponse);
-  rpc CreateProfile(CreateProfileRequest) returns (ProfileResponse);
-  rpc UpdateProfile(UpdateProfileRequest) returns (ProfileResponse);
+  rpc GetProfile(google.protobuf.Empty) returns (PersonalProfileResponse);
+  rpc GetProfileById(GetProfileByIdRequest) returns (PublicProfileResponse);
+  rpc CreateProfile(CreateProfileRequest) returns (PersonalProfileResponse);
+  rpc UpdateProfile(UpdateProfileRequest) returns (PersonalProfileResponse);
 
   // --- Categories Section ---
-  rpc AddFavoriteCategories(CategoriesRequest) returns (ProfileResponse);
-  rpc RemoveFavoriteCategories(CategoriesRequest) returns (ProfileResponse);
+  rpc AddFavoriteCategories(CategoriesRequest) returns (PersonalProfileResponse);
+  rpc RemoveFavoriteCategories(CategoriesRequest) returns (PersonalProfileResponse);
 }
 
 // --- Auth Messages ---
@@ -45,7 +46,19 @@ message RefreshRequest {
 }
 
 // --- Profile Messages ---
-message ProfileResponse {
+message GetProfileByIdRequest {
+  string id = 1;
+}
+
+message PublicProfileResponse {
+  string id = 1;
+  optional string name = 2;
+  optional string bio = 3;
+  optional string avatar_url = 4;
+  double reputation = 5;
+}
+
+message PersonalProfileResponse {
   string id = 1;
   optional string name = 2;
   optional string bio = 3;

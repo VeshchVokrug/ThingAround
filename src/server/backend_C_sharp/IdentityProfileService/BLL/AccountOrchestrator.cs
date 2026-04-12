@@ -26,6 +26,11 @@ public class AccountOrchestrator
         var userId = GetCurrentUserId();
         return await _profileManager.GetProfileAsync(userId, ct);
     }
+
+    public async Task<ProfileDto> GetProfileByIdAsync(Guid id, CancellationToken ct)
+    {
+        return await _profileManager.GetProfileAsync(id, ct);
+    }
     
     public async Task<AuthTokenDto> RegisterAccountAsync(string email, string password, CancellationToken ct)
     {
