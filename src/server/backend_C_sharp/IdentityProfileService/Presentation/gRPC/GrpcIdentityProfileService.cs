@@ -50,38 +50,49 @@ public class GrpcIdentityProfileService : IdentityProfileService.Grpc.IdentityPr
     }
 
     // --- Profile Section ---
-    public override async Task<ProfileResponse> GetProfile(Empty request, ServerCallContext context)
+    public override async Task<PersonalProfileResponse> GetProfile(Empty request, ServerCallContext context)
     {
         var profile = await _orchestrator.GetProfileAsync(context.CancellationToken);
-        return profile.ToGrpc();
+        return profile.ToPersonalGrpc();
     }
 
-    public override async Task<ProfileResponse> CreateProfile(CreateProfileRequest request, ServerCallContext context)
+    public override async Task<PublicProfileResponse> GetProfileById(GetProfileByIdRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.Id, out var profileId))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid GUID format"));
+        }
+        
+        var profile = await _orchestrator.GetProfileByIdAsync(profileId, context.CancellationToken);
+        return profile.ToPublicGrpc();
+    }
+
+    public override async Task<PersonalProfileResponse> CreateProfile(CreateProfileRequest request, ServerCallContext context)
     {
         var profile = await _orchestrator.CreateProfileAsync(request.ToDto(), context.CancellationToken);
-        return profile.ToGrpc();
+        return profile.ToPersonalGrpc();
     }
 
-    public override async Task<ProfileResponse> UpdateProfile(UpdateProfileRequest request, ServerCallContext context)
+    public override async Task<PersonalProfileResponse> UpdateProfile(UpdateProfileRequest request, ServerCallContext context)
     {
         await _orchestrator.UpdateProfileAsync(request.ToDto(), context.CancellationToken);
         var updatedProfile = await _orchestrator.GetProfileAsync(context.CancellationToken);
-        return updatedProfile.ToGrpc();
+        return updatedProfile.ToPersonalGrpc();
     }
 
     // --- Categories Section ---
 
-    public override async Task<ProfileResponse> AddFavoriteCategories(CategoriesRequest request, ServerCallContext context)
+    public override async Task<PersonalProfileResponse> AddFavoriteCategories(CategoriesRequest request, ServerCallContext context)
     {
         await _orchestrator.AddFavoriteCategoriesAsync(request.Categories.ToList(), context.CancellationToken);
         var updatedProfile = await _orchestrator.GetProfileAsync(context.CancellationToken);
-        return updatedProfile.ToGrpc();
+        return updatedProfile.ToPersonalGrpc();
     }
 
-    public override async Task<ProfileResponse> RemoveFavoriteCategories(CategoriesRequest request, ServerCallContext context)
+    public override async Task<PersonalProfileResponse> RemoveFavoriteCategories(CategoriesRequest request, ServerCallContext context)
     {
         await _orchestrator.RemoveFavoriteCategoriesAsync(request.Categories.ToList(), context.CancellationToken);
         var updatedProfile = await _orchestrator.GetProfileAsync(context.CancellationToken);
-        return updatedProfile.ToGrpc();
+        return updatedProfile.ToPersonalGrpc();
     }
 }

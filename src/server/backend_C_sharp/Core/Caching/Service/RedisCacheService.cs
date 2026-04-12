@@ -7,7 +7,7 @@ namespace Core.Caching.Service;
 /// <summary>
 /// Кеширование в Redis как JSON, так и byte[] объектов.
 /// </summary>
-public class RedisCacheService : ICacheService
+internal class RedisCacheService : ICacheService
 {
     private readonly IDatabase _db;
     private readonly string _prefix;
