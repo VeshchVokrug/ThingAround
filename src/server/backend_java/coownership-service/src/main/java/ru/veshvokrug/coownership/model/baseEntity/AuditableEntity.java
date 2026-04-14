@@ -10,6 +10,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.Instant;
 
 /**
+ * Сущность с created_at и updated_at, наследуется от {@link BaseEntity}
+ *
  * @author Dmitrii Marchenko 13.04.2026
  */
 @MappedSuperclass
@@ -20,6 +22,6 @@ public abstract class AuditableEntity extends BaseEntity {
     private Instant createdAt;
 
     @LastModifiedDate
-    @Column(name = "updsted_at",nullable = false)
+    @Column(name = "updated_at",nullable = false)
     private Instant updatedAt;
 }

@@ -1,7 +1,5 @@
 package ru.veshvokrug.coownership.output.dto;
 
-import ru.veshvokrug.coownership.model.AnnouncementStatus;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;

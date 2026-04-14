@@ -6,7 +6,7 @@ import ru.veshvokrug.coownership.model.PeriodStatus;
 import ru.veshvokrug.coownership.model.baseEntity.AuditableEntity;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -24,11 +24,11 @@ public class Period extends AuditableEntity {
     @Column(name = "rental_listing_id")
     private UUID rentalListingId;
 
-    @Column(name = "start_date")
-    private Instant startDate;
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
 
-    @Column(name = "end_date")
-    private Instant endDate;
+    @Column(name = "end_date", nullable = false)
+    private LocalDate endDate;
 
     @Column(
             name = "total_income",
@@ -38,6 +38,7 @@ public class Period extends AuditableEntity {
     @DecimalMin("0.00")
     private BigDecimal totalIncome = BigDecimal.ZERO;
 
-    @Column(name = "status")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
     private PeriodStatus status = PeriodStatus.ACTIVE;
 }

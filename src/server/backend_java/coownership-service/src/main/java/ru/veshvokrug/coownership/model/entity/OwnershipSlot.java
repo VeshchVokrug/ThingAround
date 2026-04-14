@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import ru.veshvokrug.coownership.model.OwnershipSlotStatus;
 import ru.veshvokrug.coownership.model.baseEntity.BaseEntity;
 
-import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -13,8 +13,13 @@ import java.util.UUID;
  * @author Dmitrii Marchenko 13.04.2026
  */
 @Entity
-@Table(name = "ownership_slots")
-public class OwnershipSlots extends BaseEntity {
+@Table(name = "ownership_slots", uniqueConstraints = {
+        @UniqueConstraint(
+                name = "uc_slot_period_date",
+                columnNames = {"period_id", "date"}
+        )
+})
+public class OwnershipSlot extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
             name = "period_id",
@@ -26,8 +31,9 @@ public class OwnershipSlots extends BaseEntity {
     private UUID ownerId;
 
     @Column(name = "date", nullable = false)
-    private Instant date;
+    private LocalDate date;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private OwnershipSlotStatus status = OwnershipSlotStatus.FOR_RENT;
 

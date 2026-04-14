@@ -3,10 +3,10 @@ package ru.veshvokrug.coownership.input;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-import ru.veshvokrug.coownership.model.AnnouncementStatus;
-import ru.veshvokrug.coownership.model.ShareStatus;
 import ru.veshvokrug.coownership.output.dto.AnnouncementResponseDto;
+import ru.veshvokrug.coownership.output.dto.AnnouncementStatus;
 import ru.veshvokrug.coownership.output.dto.ShareResponseDto;
+import ru.veshvokrug.coownership.output.dto.ShareStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

@@ -31,8 +31,8 @@ public class OwnershipShare extends BaseEntity {
     @Max(value = 99, message = "Доля должна быть меньше 99")
     private int percentage;
 
-    @Column(name = "monthly_template_days")
-    private int monthlyTemplateDays;
+    @Column(name = "template_days_mask", nullable = false)
+    private int templateDaysMask;
 
     @Column(name = "is_locked", nullable = false)
     private boolean isLocked = false;

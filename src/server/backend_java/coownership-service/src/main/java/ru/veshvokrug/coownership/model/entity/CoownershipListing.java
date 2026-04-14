@@ -4,9 +4,7 @@ import jakarta.persistence.*;
 import ru.veshvokrug.coownership.model.CoownershipStatus;
 import ru.veshvokrug.coownership.model.baseEntity.AuditableEntity;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -19,12 +17,10 @@ import java.util.UUID;
 public class CoownershipListing extends AuditableEntity {
     // ссылка на запись в Catalog, не полноценный FK
     @Column(name = "catalog_listing_id")
-    private int catalogListingId;
+    private UUID catalogListingId;
 
     @Column(name = "owner_id", nullable = false)
     private UUID ownerId;
-
-    //todo что то добавить сюда
 
     @Column(name = "total_shares", nullable = false)
     private int totalShares;
@@ -32,23 +28,12 @@ public class CoownershipListing extends AuditableEntity {
     @Column(name = "filled_shares", nullable = false)
     private int filledShares = 0;
 
-    @OneToMany(
-            mappedBy = "coownershipListing",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true)
-    private List<OwnershipShare> ownershipShares = new ArrayList<>();
-
-    @OneToMany(
-            mappedBy = "coownershipListing",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true)
-    private List<Period> periods = new ArrayList<>();
-
-    @Column(name = "status",nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
     private CoownershipStatus status = CoownershipStatus.OPEN;
 
-    @Column(name = "funding_deadline")
-    private Instant fundingDeadline;
+    @Column(name = "funding_deadline", nullable = false)
+    private LocalDate fundingDeadline;
 
     @Column(name = "version")
     @Version
