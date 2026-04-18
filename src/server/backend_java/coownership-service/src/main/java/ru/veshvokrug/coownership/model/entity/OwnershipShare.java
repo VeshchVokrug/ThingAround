@@ -36,4 +36,47 @@ public class OwnershipShare extends BaseEntity {
 
     @Column(name = "is_locked", nullable = false)
     private boolean isLocked = false;
+
+    public OwnershipShare() {
+    }
+
+    public CoownershipListing getCoownershipListing() {
+        return coownershipListing;
+    }
+
+    public void setCoownershipListing(CoownershipListing coownershipListing) {
+        this.coownershipListing = coownershipListing;
+    }
+
+    public UUID getOwnerId() {
+        return ownerId;
+    }
+
+    public void setOwnerId(UUID ownerId) {
+        this.ownerId = ownerId;
+    }
+
+    public int getPercentage() {
+        return percentage;
+    }
+
+    public void setPercentage(int percentage) {
+        this.percentage = percentage;
+    }
+
+    public int getTemplateDaysMask() {
+        return templateDaysMask;
+    }
+
+    public void setTemplateDaysMask(int templateDaysMask) {
+        this.templateDaysMask = templateDaysMask;
+    }
+
+    public boolean isLocked() {
+        return isLocked;
+    }
+
+    public void setLocked(boolean locked) {
+        isLocked = locked;
+    }
 }

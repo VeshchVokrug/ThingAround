@@ -28,4 +28,31 @@ public class ShareApplication extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private ShareApplicationStatus status = ShareApplicationStatus.PENDING;
+
+    public ShareApplication() {
+    }
+
+    public CoownershipListing getListing() {
+        return listing;
+    }
+
+    public void setListing(CoownershipListing listing) {
+        this.listing = listing;
+    }
+
+    public UUID getApplicantId() {
+        return applicantId;
+    }
+
+    public void setApplicantId(UUID applicantId) {
+        this.applicantId = applicantId;
+    }
+
+    public ShareApplicationStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ShareApplicationStatus status) {
+        this.status = status;
+    }
 }

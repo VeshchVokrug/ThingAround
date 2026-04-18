@@ -41,4 +41,55 @@ public class Period extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private PeriodStatus status = PeriodStatus.ACTIVE;
+
+    public Period() {
+    }
+
+    public CoownershipListing getCoownershipListing() {
+        return coownershipListing;
+    }
+
+    public void setCoownershipListing(CoownershipListing coownershipListing) {
+        this.coownershipListing = coownershipListing;
+    }
+
+    public UUID getRentalListingId() {
+        return rentalListingId;
+    }
+
+    public void setRentalListingId(UUID rentalListingId) {
+        this.rentalListingId = rentalListingId;
+    }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public void setEndDate(LocalDate endDate) {
+        this.endDate = endDate;
+    }
+
+    public BigDecimal getTotalIncome() {
+        return totalIncome;
+    }
+
+    public void setTotalIncome(BigDecimal totalIncome) {
+        this.totalIncome = totalIncome;
+    }
+
+    public PeriodStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(PeriodStatus status) {
+        this.status = status;
+    }
 }

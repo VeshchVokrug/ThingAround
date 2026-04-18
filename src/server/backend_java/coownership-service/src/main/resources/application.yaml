@@ -1,15 +1,23 @@
 spring:
   application:
     name: coownership-service
-#  datasource:
-#    url: jdbc:postgresql://localhost:5432/
-#    username: postgres
-#    password: postgres
-#  jpa:
-#    hibernate:
-#      ddl-auto: validate
+  datasource:
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: admin
+    password: admin
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    show-sql: false  # true только при отладке локально
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
   liquibase:
-    enabled: false
+    enabled: true
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
 server:
+  port: 6767
   servlet:
     context-path: /api/v1/co-ownership

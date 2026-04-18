@@ -2,6 +2,7 @@ package ru.veshvokrug.coownership.model.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -13,9 +14,11 @@ import java.time.Instant;
  * @author Dmitrii Marchenko 14.04.2026
  */
 @Entity
-@Table(name = "outbox")
+@Table(name = "outbox", indexes = {
+        @Index(name = "idx_outbox_unpublished",
+                columnList = "published_at, next_attempt_at")
+})
 public class OutboxMessage extends BaseEntity {
-
     @Column(name = "event_type", nullable = false)
     private String eventType;
 
@@ -23,6 +26,66 @@ public class OutboxMessage extends BaseEntity {
     @Column(nullable = false, columnDefinition = "jsonb")
     private String payload;
 
-    @Column
+    @Column(name = "published_at")
     private Instant publishedAt;
+
+    @Column(name = "attempt_count", nullable = false)
+    private int attemptCount = 0;
+
+    @Column(name = "next_attempt_at", nullable = false)
+    private Instant nextAttemptAt = Instant.now();
+
+    @Column(name = "last_error")
+    private String lastError;
+
+    public OutboxMessage() {
+    }
+
+    public String getEventType() {
+        return eventType;
+    }
+
+    public void setEventType(String eventType) {
+        this.eventType = eventType;
+    }
+
+    public String getPayload() {
+        return payload;
+    }
+
+    public void setPayload(String payload) {
+        this.payload = payload;
+    }
+
+    public Instant getPublishedAt() {
+        return publishedAt;
+    }
+
+    public void setPublishedAt(Instant publishedAt) {
+        this.publishedAt = publishedAt;
+    }
+
+    public int getAttemptCount() {
+        return attemptCount;
+    }
+
+    public void setAttemptCount(int attemptCount) {
+        this.attemptCount = attemptCount;
+    }
+
+    public Instant getNextAttemptAt() {
+        return nextAttemptAt;
+    }
+
+    public void setNextAttemptAt(Instant nextAttemptAt) {
+        this.nextAttemptAt = nextAttemptAt;
+    }
+
+    public String getLastError() {
+        return lastError;
+    }
+
+    public void setLastError(String lastError) {
+        this.lastError = lastError;
+    }
 }

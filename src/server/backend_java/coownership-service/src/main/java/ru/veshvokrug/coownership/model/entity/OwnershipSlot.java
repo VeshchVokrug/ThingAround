@@ -39,4 +39,47 @@ public class OwnershipSlot extends BaseEntity {
 
     @Column(name = "is_override", nullable = false)
     private boolean isOverride = false;
+
+    public OwnershipSlot() {
+    }
+
+    public Period getPeriod() {
+        return period;
+    }
+
+    public void setPeriod(Period period) {
+        this.period = period;
+    }
+
+    public UUID getOwnerId() {
+        return ownerId;
+    }
+
+    public void setOwnerId(UUID ownerId) {
+        this.ownerId = ownerId;
+    }
+
+    public LocalDate getDate() {
+        return date;
+    }
+
+    public void setDate(LocalDate date) {
+        this.date = date;
+    }
+
+    public OwnershipSlotStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(OwnershipSlotStatus status) {
+        this.status = status;
+    }
+
+    public boolean isOverride() {
+        return isOverride;
+    }
+
+    public void setOverride(boolean override) {
+        isOverride = override;
+    }
 }
