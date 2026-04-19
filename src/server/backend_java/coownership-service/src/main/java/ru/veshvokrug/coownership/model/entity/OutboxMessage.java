@@ -11,6 +11,8 @@ import ru.veshvokrug.coownership.model.baseEntity.BaseEntity;
 import java.time.Instant;
 
 /**
+ * Исходящие события в Kafka
+ *
  * @author Dmitrii Marchenko 14.04.2026
  */
 @Entity

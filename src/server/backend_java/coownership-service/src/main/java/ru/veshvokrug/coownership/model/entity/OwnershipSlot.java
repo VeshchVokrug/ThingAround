@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Модель для зранения информации о каждом дне
+ * Один слот = один день одного периода.
  *
  * @author Dmitrii Marchenko 13.04.2026
  */

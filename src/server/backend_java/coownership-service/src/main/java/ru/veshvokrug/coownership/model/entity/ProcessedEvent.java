@@ -10,6 +10,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
+ * Идемпотентность входящих Kafka событий
+ *
  * @author Dmitrii Marchenko 14.04.2026
  */
 @Entity

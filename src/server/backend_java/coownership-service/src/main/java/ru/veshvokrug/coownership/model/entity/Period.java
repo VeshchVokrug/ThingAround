@@ -10,6 +10,8 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
+ * Расчётный период (календарный месяц)
+ *
  * @author Dmitrii Marchenko 13.04.2026
  */
 @Entity

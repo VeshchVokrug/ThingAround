@@ -8,7 +8,7 @@ import ru.veshvokrug.coownership.model.baseEntity.BaseEntity;
 import java.util.UUID;
 
 /**
- * Модель для хранения частей совладения с шаблоном дней
+ * Доли совладения
  *
  * @author Dmitrii Marchenko 13.04.2026
  */

@@ -7,6 +7,8 @@ import ru.veshvokrug.coownership.model.baseEntity.BaseEntity;
 import java.util.UUID;
 
 /**
+ * Заявки пользователей на занятие доли.
+ *
  * @author Dmitrii Marchenko 14.04.2026
  */
 @Entity
