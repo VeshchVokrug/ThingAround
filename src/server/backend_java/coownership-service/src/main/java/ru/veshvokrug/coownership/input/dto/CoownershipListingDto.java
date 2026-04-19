@@ -6,12 +6,13 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 /**
  * @author Dmitrii Marchenko 19.04.2026
  */
-public record CoownershipListingCreateDto(
+public record CoownershipListingDto(
         @NotNull
         @Size(
                 min = 8,
@@ -24,7 +25,7 @@ public record CoownershipListingCreateDto(
                 message = "Описание должно быть не больше 1024 символов")
         String description,
 
-        //todo: добвыить фото
+        //todo: добавить фото
 
         @NotNull
         BigDecimal sharePrice,
@@ -33,6 +34,8 @@ public record CoownershipListingCreateDto(
         UUID ownerId,
         @Min(2)
         @Max(10)
-        int totalShares
+        int totalShares,
+
+        List<ShareApplicationDto> shareSlots
 ) {
 }

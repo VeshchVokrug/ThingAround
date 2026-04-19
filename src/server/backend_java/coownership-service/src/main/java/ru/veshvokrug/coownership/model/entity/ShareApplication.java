@@ -1,6 +1,7 @@
 package ru.veshvokrug.coownership.model.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
 import ru.veshvokrug.coownership.model.ShareApplicationStatus;
 import ru.veshvokrug.coownership.model.baseEntity.BaseEntity;
 
@@ -24,6 +25,10 @@ public class ShareApplication extends BaseEntity {
     )
     private CoownershipListing listing;
 
+    @Min(value = 1, message = "Количество долей должно быть больше 0")
+    @Column(name = "shares_count", nullable = false)
+    private int sharesCount = 1;
+
     @Column(name = "applicant_id", nullable = false)
     private UUID applicantId;
 
@@ -40,6 +45,14 @@ public class ShareApplication extends BaseEntity {
 
     public void setListing(CoownershipListing listing) {
         this.listing = listing;
+    }
+
+    public int getSharesCount() {
+        return sharesCount;
+    }
+
+    public void setSharesCount(int sharesCount) {
+        this.sharesCount = sharesCount;
     }
 
     public UUID getApplicantId() {
