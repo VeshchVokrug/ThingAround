@@ -2,7 +2,6 @@ package ru.veshvokrug.coownership.model.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Size;
 import ru.veshvokrug.coownership.model.CoownershipStatus;
 import ru.veshvokrug.coownership.model.baseEntity.AuditableEntity;
 
@@ -18,20 +17,6 @@ import java.util.UUID;
 @Entity
 @Table(name = "coownership_listings")
 public class CoownershipListing extends AuditableEntity {
-    @Column(name = "name", nullable = false, length = 128)
-    @Size(
-            min = 8,
-            max = 128,
-            message = "Имя не может быть больше 128 символов")
-    private String name;
-
-    @Column(
-            name = "description", length = 1024)
-    @Size(
-            max = 1024,
-            message = "Описание не может быть больше 1024 символов")
-    private String description;
-
     @Column(
             name = "price",
             nullable = false,
@@ -41,7 +26,7 @@ public class CoownershipListing extends AuditableEntity {
     private BigDecimal price;
 
     // ссылка на запись в Catalog, не полноценный FK
-    @Column(name = "catalog_listing_id")
+    @Column(name = "catalog_listing_id", nullable = false)
     private UUID catalogListingId;
 
     @Column(name = "owner_id", nullable = false)
@@ -67,21 +52,6 @@ public class CoownershipListing extends AuditableEntity {
     public CoownershipListing() {
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
 
     public BigDecimal getPrice() {
         return price;

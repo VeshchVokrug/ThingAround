@@ -37,7 +37,8 @@ public class ListingController {
     @Operation(
             summary = "Создать листинг совладения",
             description = "Если fundingDeadline не передан, сервис автоматически " +
-                    "выставляет дедлайн на +90 дней от текущей даты."
+                    "выставляет дедлайн на +90 дней от текущей даты. " +
+                    "Если листинг с тем же catalogListingId уже существует, сервис вернет его без дублирования."
     )
     @ApiResponses({
             @ApiResponse(

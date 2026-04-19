@@ -1,7 +1,6 @@
 package ru.veshvokrug.coownership.input.mapper;
 
 import org.springframework.stereotype.Component;
-import org.springframework.web.util.HtmlUtils;
 import ru.veshvokrug.coownership.input.dto.CoownershipListingCreateResponseDto;
 import ru.veshvokrug.coownership.input.dto.CoownershipListingDto;
 import ru.veshvokrug.coownership.input.dto.ShareApplicationDto;
@@ -30,8 +29,7 @@ public class CoownershipListingMapper {
 				: shareApplications.stream().map(this::toShareApplicationDto).collect(Collectors.toList());
 
 		return new CoownershipListingDto(
-				HtmlUtils.htmlEscape(listing.getName()),
-				HtmlUtils.htmlEscape(listing.getDescription()),
+				listing.getCatalogListingId(),
 				listing.getPrice(),
 				listing.getOwnerId(),
 				listing.getTotalShares(),

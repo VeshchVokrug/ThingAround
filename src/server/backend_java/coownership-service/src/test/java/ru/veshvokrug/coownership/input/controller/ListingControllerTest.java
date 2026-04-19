@@ -109,17 +109,13 @@ class ListingControllerTest {
     }
 
     @Test
-    void createListingRejectsHtmlLikeName() throws Exception {
-        UUID ownerId = UUID.randomUUID();
-        LocalDate deadline = LocalDate.now().plusDays(45);
-
+    void createListingRejectsMissingCatalogListingId() throws Exception {
         CoownershipListingCreateRequestDto request = new CoownershipListingCreateRequestDto(
-                "<script>alert(1)</script>",
-                "Описание объекта",
+                null,
                 new BigDecimal("150000.00"),
-                ownerId,
+                UUID.randomUUID(),
                 10,
-                deadline
+                LocalDate.now().plusDays(45)
         );
 
         mockMvc.perform(post("/listings")
@@ -157,8 +153,7 @@ class ListingControllerTest {
     @Test
     void createListingRejectsNegativeSharePrice() throws Exception {
         CoownershipListingCreateRequestDto request = new CoownershipListingCreateRequestDto(
-                "Апартаменты у моря",
-                "Описание объекта",
+                UUID.randomUUID(),
                 new BigDecimal("-1.00"),
                 UUID.randomUUID(),
                 10,
@@ -174,10 +169,9 @@ class ListingControllerTest {
 
     @Test
     void createListingRejectsTotalSharesOutOfRange() throws Exception {
-        int invalidTotalShares = 1;
+        int invalidTotalShares = Integer.parseInt("1");
         CoownershipListingCreateRequestDto request = new CoownershipListingCreateRequestDto(
-                "Апартаменты у моря",
-                "Описание объекта",
+                UUID.randomUUID(),
                 new BigDecimal("150000.00"),
                 UUID.randomUUID(),
                 invalidTotalShares,
@@ -194,8 +188,7 @@ class ListingControllerTest {
 
     private CoownershipListingCreateRequestDto validRequest(LocalDate deadline) {
         return new CoownershipListingCreateRequestDto(
-                "Апартаменты у моря",
-                "Описание объекта",
+                UUID.randomUUID(),
                 new BigDecimal("150000.00"),
                 UUID.randomUUID(),
                 10,
@@ -206,9 +199,8 @@ class ListingControllerTest {
     private void stubCreatedResponse(CoownershipListingCreateRequestDto request, LocalDate responseDeadline) {
         CoownershipListing listing = new CoownershipListing();
         listing.setId(UUID.randomUUID());
-        listing.setName(request.name());
-        listing.setDescription(request.description());
-        listing.setPrice(request.sharePrice());
+        listing.setCatalogListingId(request.catalogListingId());
+        listing.setPrice(request.price());
         listing.setOwnerId(request.ownerId());
         listing.setTotalShares(request.totalShares());
         listing.setFundingDeadline(responseDeadline);
