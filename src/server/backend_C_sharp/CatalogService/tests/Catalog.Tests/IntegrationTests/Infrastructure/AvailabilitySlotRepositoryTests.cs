@@ -1,4 +1,4 @@
-﻿using Application.DTO;
+﻿using Catalog.Contracts.DTO.AvailableSlot;
 using Domain.Entity;
 using FluentAssertions;
 using Infrastructure.Persistence;
@@ -12,7 +12,7 @@ namespace CatalogService.Tests.IntegrationTests.Infrastructure;
 public class AvailabilitySlotRepositoryTests
 {
     private readonly PostgresFixture _fixture;
-    private readonly TimeProvider _timeProvider;
+    private readonly FakeTimeProvider _timeProvider;
 
     public AvailabilitySlotRepositoryTests(PostgresFixture fixture)
     {
@@ -97,6 +97,60 @@ public class AvailabilitySlotRepositoryTests
         var availabilitySlotDtos = result as List<AvailableSlotDto> ?? result.ToList();
         availabilitySlotDtos.Should().ContainSingle();
         availabilitySlotDtos.First().Date.Should().Be(validDate);
+    }
+    
+    [Fact]
+    public async Task TryReserveSlotsAsync_OwnerClosesDates_ShouldBeCorrectAndIdempotent()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        var sut = CreateRepository(context);
+        var listingId = Guid.NewGuid();
+        Guid? bookingId = null;
+        var date = new DateOnly(2026, 4, 15);
+        
+        context.AvailabilitySlots.Add(new AvailabilitySlot 
+        { 
+            ListingId = listingId, 
+            Date = date, 
+            IsAvailable = true, 
+            Price = 100 
+        });
+        await context.SaveChangesAsync();
+
+        var firstCallTime = _timeProvider.GetUtcNow().UtcDateTime;
+        
+        // Act
+        var firstResult = await sut.TryReserveSlotsAsync(listingId, [date], bookingId);
+        
+        firstResult.Should().BeTrue();
+        
+        using (var context1 = _fixture.CreateContext())
+        {
+            var slot = await context1.AvailabilitySlots.FirstAsync(s => s.ListingId == listingId);
+            slot.IsAvailable.Should().BeFalse();
+            slot.BookingId.Should().BeNull();
+            slot.ReservedAt.Should().BeCloseTo(firstCallTime, TimeSpan.FromSeconds(1));
+            
+            var initialReservedAt = slot.ReservedAt;
+            
+            _timeProvider.Advance(TimeSpan.FromMinutes(5));
+            
+            var secondResult = await sut.TryReserveSlotsAsync(listingId, [date], bookingId);
+
+            // Assert
+            secondResult.Should().BeTrue(); 
+
+            using (var context2 = _fixture.CreateContext())
+            {
+                var secondSlot = await context2.AvailabilitySlots.FirstAsync(s => s.ListingId == listingId);
+                
+                secondSlot.IsAvailable.Should().BeFalse();
+                secondSlot.BookingId.Should().BeNull();
+                
+                secondSlot.ReservedAt.Should().Be(initialReservedAt);
+            }
+        }
     }
     
     [Fact]
@@ -219,7 +273,13 @@ public class AvailabilitySlotRepositoryTests
         var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var date = new DateOnly(2026, 5, 1);
-        context.AvailabilitySlots.Add(new AvailabilitySlot { ListingId = listingId, Date = date, Price = 50 });
+    
+        context.AvailabilitySlots.Add(new AvailabilitySlot 
+        { 
+            ListingId = listingId, 
+            Date = date, 
+            Price = 50 
+        });
         await context.SaveChangesAsync();
 
         // Act
@@ -227,11 +287,16 @@ public class AvailabilitySlotRepositoryTests
 
         // Assert
         result.Should().BeTrue();
-    
+
         using var assertContext = _fixture.CreateContext();
-        (await assertContext.AvailabilitySlots.FirstAsync()).Price.Should().Be(150);
+        
+        var updatedSlot = await assertContext.AvailabilitySlots
+            .FirstOrDefaultAsync(s => s.ListingId == listingId && s.Date == date);
+
+        updatedSlot.Should().NotBeNull();
+        updatedSlot!.Price.Should().Be(150);
     }
-    
+
     [Fact]
     public async Task RemoveAvailabilitySlotAsync_ShouldReturnDeletedCountAndRemoveFromDb()
     {
@@ -240,6 +305,7 @@ public class AvailabilitySlotRepositoryTests
         var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var date = new DateOnly(2026, 5, 1);
+    
         context.AvailabilitySlots.Add(new AvailabilitySlot { ListingId = listingId, Date = date, Price = 50 });
         await context.SaveChangesAsync();
 
@@ -248,10 +314,12 @@ public class AvailabilitySlotRepositoryTests
 
         // Assert
         count.Should().Be(1);
-    
+
         using var assertContext = _fixture.CreateContext();
-        (await assertContext.AvailabilitySlots.AnyAsync()).Should().BeFalse();
+        
+        var exists = await assertContext.AvailabilitySlots
+            .AnyAsync(s => s.ListingId == listingId && s.Date == date);
+    
+        exists.Should().BeFalse("потому что мы удалили конкретно эту запись, а на остальные нам плевать");
     }
-    
-    
 }

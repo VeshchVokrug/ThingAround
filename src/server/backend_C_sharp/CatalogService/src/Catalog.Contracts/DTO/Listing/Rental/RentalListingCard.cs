@@ -1,4 +1,4 @@
-﻿namespace Application.DTO.Listing.Rental;
+﻿namespace Catalog.Contracts.DTO.Listing.Rental;
 
 public record RentalListingCard(
     Guid ListingId,

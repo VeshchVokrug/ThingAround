@@ -1,4 +1,6 @@
-﻿namespace Application.DTO.Listing.Rental;
+﻿using Catalog.Contracts.DTO.AvailableSlot;
+
+namespace Catalog.Contracts.DTO.Listing.Rental;
 
 public record UpdateRentalListingDto
 {

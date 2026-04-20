@@ -1,4 +1,4 @@
-﻿using Application.DTO.Listing.Rental;
+﻿using Catalog.Contracts.DTO.Listing.Rental;
 using Core.Contracts;
 using Domain.Entity;
 using FluentAssertions;

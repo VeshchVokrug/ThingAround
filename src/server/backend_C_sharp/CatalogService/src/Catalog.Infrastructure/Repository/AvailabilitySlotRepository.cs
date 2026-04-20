@@ -1,7 +1,7 @@
-﻿using Application.DTO;
+﻿using Catalog.Contracts.DTO.AvailableSlot;
+using Catalog.Contracts.Repository.Abstractions;
 using Domain.Entity;
 using Infrastructure.Persistence;
-using Infrastructure.Repository.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repository;
@@ -76,28 +76,38 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
             .ToListAsync(ct);
     }
 
-    public async Task<bool> TryReserveSlotsAsync(Guid listingId, IEnumerable<DateOnly> dates, Guid bookingId, CancellationToken ct = default)
+    public async Task<bool> TryReserveSlotsAsync(Guid listingId, IEnumerable<DateOnly> dates, Guid? bookingId = null, CancellationToken ct = default)
     {
         var datesList = dates as IReadOnlyCollection<DateOnly> ?? dates.ToList();
         
-        var busiedSlots = await _context.AvailabilitySlots
+        await _context.AvailabilitySlots
             .Where(s => 
                 s.ListingId == listingId 
                 && datesList.Contains(s.Date) 
-                && (s.IsAvailable || s.BookingId == bookingId))
+                && s.IsAvailable)
             .ExecuteUpdateAsync(sp => sp
                 .SetProperty(s => s.IsAvailable, false)
                 .SetProperty(s => s.BookingId, bookingId)
                 .SetProperty(s => s.ReservedAt, _timeProvider.GetUtcNow().UtcDateTime), ct);
         
-        return busiedSlots == datesList.Count;
+        var totalReserved = await _context.AvailabilitySlots
+            .CountAsync(s => 
+                s.ListingId == listingId 
+                && datesList.Contains(s.Date) 
+                && s.IsAvailable == false
+                && s.BookingId == bookingId, ct);
+        
+        return totalReserved == datesList.Count;
     }
 
     public async Task CancelReservationAsync(Guid listingId, IEnumerable<DateOnly> dates,
         Guid? bookingId = null, CancellationToken ct = default)
     {
         var datesList = dates as IReadOnlyCollection<DateOnly> ?? dates.ToList();
-        if (datesList.Count == 0) return;
+        if (datesList.Count == 0)
+        {
+            return;
+        }
 
         var query = _context.AvailabilitySlots
             .Where(s => s.ListingId == listingId)

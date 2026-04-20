@@ -1,4 +1,4 @@
-﻿namespace Application.DTO;
+﻿namespace Catalog.Contracts.DTO;
 
 public record PagedResponse<T>(
     IEnumerable<T> Items,

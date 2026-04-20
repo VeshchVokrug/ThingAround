@@ -1,4 +1,4 @@
-﻿namespace Application.DTO;
+﻿namespace Catalog.Contracts.DTO.AvailableSlot;
 
 public record AvailableSlotDto
 {

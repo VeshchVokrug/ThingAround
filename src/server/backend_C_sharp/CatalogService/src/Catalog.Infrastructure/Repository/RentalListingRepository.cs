@@ -1,8 +1,9 @@
-﻿using Application.DTO;
-using Application.DTO.Listing.Rental;
+﻿using Catalog.Contracts.DTO;
+using Catalog.Contracts.DTO.AvailableSlot;
+using Catalog.Contracts.DTO.Listing.Rental;
+using Catalog.Contracts.Repository.Abstractions;
 using Domain.Entity;
 using Infrastructure.Persistence;
-using Infrastructure.Repository.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using NpgsqlTypes;
 
@@ -146,7 +147,13 @@ public class RentalListingRepository : IRentalListingRepository
 
         return new PagedResponse<RentalListingCard>(cards, totalCount, request.PageNumber, request.PageSize, request.City);
     }
-    
+
+    public async Task<bool> IsOwnerAsync(Guid listingId, Guid userId, CancellationToken ct = default)
+    {
+        return await _context.RentalListings
+            .AnyAsync(l => l.Id == listingId && l.OwnerId == userId, ct);
+    }
+
     public async Task<Guid> CreateAsync(CreateRentalListingDto dto, CancellationToken ct = default)
     {
         var listing = new RentalListing
@@ -159,8 +166,8 @@ public class RentalListingRepository : IRentalListingRepository
             Description = dto.Description,
             City = dto.City,
             DefaultPrice = dto.DefaultPrice,
-            Contact = new ContactInfo 
-            { 
+            Contact = new ContactInfo
+            {
                 ManagerId = dto.OwnerId,
                 PersonName = dto.OwnerName,
                 PersonPhone = dto.OwnerPhone,
