@@ -94,7 +94,7 @@ public class AvailabilitySlotRepositoryTests
         var result = await sut.GetAvailabilitySlotsAsync(listingId);
 
         // Assert
-        var availabilitySlotDtos = result as List<AvailabilitySlotDto> ?? result.ToList();
+        var availabilitySlotDtos = result as List<AvailableSlotDto> ?? result.ToList();
         availabilitySlotDtos.Should().ContainSingle();
         availabilitySlotDtos.First().Date.Should().Be(validDate);
     }

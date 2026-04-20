@@ -55,7 +55,7 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
         await _context.SaveChangesAsync(ct);
     }
 
-    public async Task<IEnumerable<AvailabilitySlotDto>> GetAvailabilitySlotsAsync(Guid listingId, CancellationToken ct = default)
+    public async Task<IEnumerable<AvailableSlotDto>> GetAvailabilitySlotsAsync(Guid listingId, CancellationToken ct = default)
     {
         var horizon = Today.AddDays(60);
 
@@ -67,10 +67,11 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
                 && s.Date >= Today 
                 && s.Date <= horizon)
             .OrderBy(s => s.Date)
-            .Select(s => new AvailabilitySlotDto
+            .Select(s => new AvailableSlotDto
             {
                 Date = s.Date,
-                Price = s.Price
+                Price = s.Price,
+                IsReversible = s.IsAvailable && s.BookingId == null
             })
             .ToListAsync(ct);
     }

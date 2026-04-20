@@ -1,4 +1,4 @@
-﻿namespace Application.DTO;
+﻿namespace Application.DTO.Listing.Rental;
 
 public record RentalFilterRequest(
     string? SearchTerm = null,

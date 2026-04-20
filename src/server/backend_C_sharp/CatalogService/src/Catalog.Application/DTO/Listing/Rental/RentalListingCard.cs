@@ -1,8 +1,9 @@
-﻿namespace Application.DTO;
+﻿namespace Application.DTO.Listing.Rental;
 
 public record RentalListingCard(
     Guid ListingId,
     string Title,
+    string TitleSlug,
     string? ImageUrl,
     int PricePerDay,
     float OwnerRating

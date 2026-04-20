@@ -1,4 +1,4 @@
-﻿using Application.DTO;
+﻿using Application.DTO.Listing.Rental;
 using Core.Contracts;
 using Domain.Entity;
 using FluentAssertions;
@@ -13,14 +13,19 @@ namespace CatalogService.Tests.IntegrationTests.Infrastructure;
 public class RentalListingRepositoryTests
 {
     private readonly PostgresFixture _fixture;
+    private readonly TimeProvider _timeProvider;
     
     public RentalListingRepositoryTests(PostgresFixture fixture)
     {
         _fixture = fixture;
+        _timeProvider = new FakeTimeProvider(new DateTimeOffset(2026, 4, 10, 12, 0, 0, TimeSpan.Zero));
     }
     
     private RentalListingRepository CreateRepository(CatalogDbContext context) 
-        => new RentalListingRepository(context);
+    {
+        var availabilityRepository = new AvailabilitySlotRepository(context, _timeProvider);
+        return new RentalListingRepository(context, availabilityRepository);
+    }
 
     [Theory]
     [MemberData(nameof(GetFilterTestData))]
@@ -39,6 +44,305 @@ public class RentalListingRepositoryTests
         result.Items.Should().HaveCount(expectedCount, because: testCase);
         result.TotalCount.Should().Be(expectedTotalCount, because: testCase);
         result.Items.Should().HaveCountLessThanOrEqualTo(request.PageSize);
+    }
+
+    [Fact]
+    public async Task GetAsync_ExistingListing_ShouldReturnListingWithAvailableSlots()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
+        var sut = CreateRepository(context);
+
+        var ownerId = Guid.NewGuid();
+        var listing = CreateListing(
+            title: "Drill Makita",
+            desc: "Lightweight drill",
+            catSlug: Category.PowerTools.ToString(),
+            city: "Moscow",
+            price: 1700,
+            rating: 4.6f,
+            ownerId: ownerId,
+            createdAt: new DateTime(2026, 4, 12, 10, 0, 0, DateTimeKind.Utc),
+            managerId: ownerId,
+            imagesUrls: ["main.jpg"]);
+
+        var today = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
+        var availableDate = today.AddDays(2);
+
+        await context.RentalListings.AddAsync(listing);
+        await context.AvailabilitySlots.AddRangeAsync(
+            new AvailabilitySlot { ListingId = listing.Id, Date = availableDate, Price = 1700, IsAvailable = true },
+            new AvailabilitySlot { ListingId = listing.Id, Date = availableDate.AddDays(1), Price = 1800, IsAvailable = false });
+        await context.SaveChangesAsync();
+
+        // Act
+        var result = await sut.GetAsync(listing.Id);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(listing.Id);
+        result.Title.Should().Be("Drill Makita");
+        result.ImagesUrls.Should().ContainSingle().Which.Should().Be("main.jpg");
+        result.OwnerId.Should().Be(ownerId);
+        result.AvailableSlots.Should().ContainSingle();
+        result.AvailableSlots.Single().Date.Should().Be(availableDate);
+    }
+
+    [Fact]
+    public async Task GetAsync_UnknownId_ShouldReturnNull()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
+        var sut = CreateRepository(context);
+
+        // Act
+        var result = await sut.GetAsync(Guid.NewGuid());
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetAllByUser_ShouldReturnOnlyOwnerListingsOrderedByCreatedAtDesc()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
+        var sut = CreateRepository(context);
+
+        var ownerId = Guid.NewGuid();
+        var otherOwnerId = Guid.NewGuid();
+
+        var older = CreateListing("Bike", "Old", Category.Camping.ToString(), "Moscow", 1000, 4.2f,
+            ownerId: ownerId, createdAt: new DateTime(2026, 4, 10, 10, 0, 0, DateTimeKind.Utc));
+        var newer = CreateListing("Camera", "New", Category.Projectors.ToString(), "Moscow", 2200, 4.9f,
+            ownerId: ownerId, createdAt: new DateTime(2026, 4, 11, 10, 0, 0, DateTimeKind.Utc));
+        var foreign = CreateListing("Tent", "Foreign", Category.Camping.ToString(), "Kazan", 700, 4.1f,
+            ownerId: otherOwnerId, createdAt: new DateTime(2026, 4, 12, 10, 0, 0, DateTimeKind.Utc));
+
+        await context.RentalListings.AddRangeAsync(older, newer, foreign);
+        await context.SaveChangesAsync();
+
+        // Act
+        var result = (await sut.GetAllByUser(ownerId)).ToList();
+
+        // Assert
+        result.Should().HaveCount(2);
+        result.Select(x => x.ListingId).Should().ContainInOrder(newer.Id, older.Id);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ValidDto_ShouldPersistListingAndReturnId()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
+        var sut = CreateRepository(context);
+
+        var ownerId = Guid.NewGuid();
+        var dto = new CreateRentalListingDto
+        {
+            TitleSlug = "new-camera",
+            CategorySlug = Category.Projectors.ToString(),
+            Title = "New Camera",
+            Description = "Mirrorless",
+            ImagesUrls = ["camera.jpg"],
+            City = "Spb",
+            DefaultPrice = 2500,
+            OwnerId = ownerId,
+            OwnerRating = 4.8f,
+            OwnerName = "Alex",
+            OwnerPhone = "81234567890",
+            OwnerSocialsUrls = ["https://t.me/alex"],
+            AvailableSlots = []
+        };
+
+        // Act
+        var createdId = await sut.CreateAsync(dto);
+
+        // Assert
+        createdId.Should().NotBeEmpty();
+
+        using var assertContext = _fixture.CreateContext();
+        var saved = await assertContext.RentalListings.FirstOrDefaultAsync(x => x.Id == createdId);
+
+        saved.Should().NotBeNull();
+        saved!.Title.Should().Be(dto.Title);
+        saved.TitleSlug.Should().Be(dto.TitleSlug);
+        saved.CategorySlug.Should().Be(dto.CategorySlug);
+        saved.City.Should().Be(dto.City);
+        saved.DefaultPrice.Should().Be(dto.DefaultPrice);
+        saved.OwnerId.Should().Be(dto.OwnerId);
+        saved.IsActive.Should().BeTrue();
+        saved.Contact.ManagerId.Should().Be(dto.OwnerId);
+        saved.Contact.PersonName.Should().Be(dto.OwnerName);
+        saved.Contact.PersonPhone.Should().Be(dto.OwnerPhone);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithOwnerFilterAndMatchingOwner_ShouldUpdateListing()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
+        var sut = CreateRepository(context);
+
+        var ownerId = Guid.NewGuid();
+        var listing = CreateListing("Old title", "Old desc", Category.Camping.ToString(), "Moscow", 900, 4.1f,
+            ownerId: ownerId, managerId: ownerId);
+        await context.RentalListings.AddAsync(listing);
+        await context.SaveChangesAsync();
+
+        var dto = CreateUpdateDto(listing.Id);
+
+        // Act
+        var updated = await sut.UpdateAsync(dto, ownerId);
+
+        // Assert
+        updated.Should().BeTrue();
+
+        using var assertContext = _fixture.CreateContext();
+        var saved = await assertContext.RentalListings.FirstAsync(x => x.Id == listing.Id);
+        saved.Title.Should().Be(dto.Title);
+        saved.TitleSlug.Should().Be(dto.TitleSlug);
+        saved.CategorySlug.Should().Be(dto.CategorySlug);
+        saved.City.Should().Be(dto.City);
+        saved.DefaultPrice.Should().Be(dto.DefaultPrice);
+        saved.Contact.ManagerId.Should().Be(dto.ManagerId);
+        saved.Contact.PersonName.Should().Be(dto.OwnerName);
+        saved.Contact.PersonPhone.Should().Be(dto.OwnerPhone);
+        saved.OwnerRating.Should().Be(dto.OwnerRating);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithOwnerFilterAndDifferentOwner_ShouldReturnFalseAndKeepOriginal()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
+        var sut = CreateRepository(context);
+
+        var ownerId = Guid.NewGuid();
+        var strangerId = Guid.NewGuid();
+        var listing = CreateListing("Original", "Original desc", Category.PowerTools.ToString(), "Moscow", 1300, 4.3f,
+            ownerId: ownerId, managerId: ownerId);
+        await context.RentalListings.AddAsync(listing);
+        await context.SaveChangesAsync();
+
+        var dto = CreateUpdateDto(listing.Id);
+
+        // Act
+        var updated = await sut.UpdateAsync(dto, strangerId);
+
+        // Assert
+        updated.Should().BeFalse();
+
+        using var assertContext = _fixture.CreateContext();
+        var saved = await assertContext.RentalListings.FirstAsync(x => x.Id == listing.Id);
+        saved.Title.Should().Be("Original");
+        saved.DefaultPrice.Should().Be(1300);
+    }
+
+    [Fact]
+    public async Task RemoveAsync_WithMatchingOwner_ShouldDeleteListing()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
+        var sut = CreateRepository(context);
+
+        var ownerId = Guid.NewGuid();
+        var listing = CreateListing("To remove", "Desc", Category.PowerTools.ToString(), "Moscow", 500, 4.0f,
+            ownerId: ownerId);
+        await context.RentalListings.AddAsync(listing);
+        await context.SaveChangesAsync();
+
+        // Act
+        var removed = await sut.RemoveAsync(listing.Id, ownerId);
+
+        // Assert
+        removed.Should().BeTrue();
+
+        using var assertContext = _fixture.CreateContext();
+        (await assertContext.RentalListings.AnyAsync(x => x.Id == listing.Id)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RemoveAsync_WithDifferentOwner_ShouldReturnFalseAndKeepListing()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
+        var sut = CreateRepository(context);
+
+        var ownerId = Guid.NewGuid();
+        var strangerId = Guid.NewGuid();
+        var listing = CreateListing("Cannot remove", "Desc", Category.PowerTools.ToString(), "Moscow", 800, 4.0f,
+            ownerId: ownerId);
+        await context.RentalListings.AddAsync(listing);
+        await context.SaveChangesAsync();
+
+        // Act
+        var removed = await sut.RemoveAsync(listing.Id, strangerId);
+
+        // Assert
+        removed.Should().BeFalse();
+
+        using var assertContext = _fixture.CreateContext();
+        (await assertContext.RentalListings.AnyAsync(x => x.Id == listing.Id)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_WithMatchingOwner_ShouldSetIsActiveFalse()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
+        var sut = CreateRepository(context);
+
+        var ownerId = Guid.NewGuid();
+        var listing = CreateListing("To deactivate", "Desc", Category.PowerTools.ToString(), "Moscow", 1000, 4.2f,
+            ownerId: ownerId, isActive: true);
+        await context.RentalListings.AddAsync(listing);
+        await context.SaveChangesAsync();
+
+        // Act
+        var deactivated = await sut.DeactivateAsync(listing.Id, ownerId);
+
+        // Assert
+        deactivated.Should().BeTrue();
+
+        using var assertContext = _fixture.CreateContext();
+        var saved = await assertContext.RentalListings.FirstAsync(x => x.Id == listing.Id);
+        saved.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_WithDifferentOwner_ShouldReturnFalseAndKeepListingActive()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
+        var sut = CreateRepository(context);
+
+        var ownerId = Guid.NewGuid();
+        var strangerId = Guid.NewGuid();
+        var listing = CreateListing("Still active", "Desc", Category.PowerTools.ToString(), "Moscow", 1000, 4.2f,
+            ownerId: ownerId, isActive: true);
+        await context.RentalListings.AddAsync(listing);
+        await context.SaveChangesAsync();
+
+        // Act
+        var deactivated = await sut.DeactivateAsync(listing.Id, strangerId);
+
+        // Assert
+        deactivated.Should().BeFalse();
+
+        using var assertContext = _fixture.CreateContext();
+        var saved = await assertContext.RentalListings.FirstAsync(x => x.Id == listing.Id);
+        saved.IsActive.Should().BeTrue();
     }
     
     public static IEnumerable<object[]> GetFilterTestData()
@@ -211,9 +515,37 @@ public class RentalListingRepositoryTests
         await context.AvailabilitySlots.AddRangeAsync(slots);
         await context.SaveChangesAsync();
     }
+
+    private async Task ResetDatabaseAsync(CatalogDbContext context)
+    {
+        await context.AvailabilitySlots.ExecuteDeleteAsync();
+        await context.RentalListings.ExecuteDeleteAsync();
+    }
+
+    private static UpdateRentalListingDto CreateUpdateDto(Guid listingId)
+    {
+        return new UpdateRentalListingDto
+        {
+            Id = listingId,
+            CategorySlug = Category.Projectors.ToString(),
+            TitleSlug = "updated-title",
+            Title = "Updated title",
+            Description = "Updated description",
+            ImagesUrls = ["updated.jpg"],
+            City = "Spb",
+            DefaultPrice = 2300,
+            ManagerId = Guid.NewGuid(),
+            OwnerRating = 4.9f,
+            OwnerName = "Updated Owner",
+            OwnerPhone = "89990001122",
+            OwnerSocialsUrls = ["https://vk.com/updated"],
+            AvailableSlots = []
+        };
+    }
     
     private RentalListing CreateListing(string title, string desc, string catSlug, string city,
-        int price, float rating)
+        int price, float rating, Guid? ownerId = null, DateTime? createdAt = null, bool isActive = true,
+        Guid? managerId = null, List<string>? imagesUrls = null)
     {
         return new RentalListing
         {
@@ -225,12 +557,13 @@ public class RentalListingRepositoryTests
             City = city,
             OwnerRating = rating,
             DefaultPrice = price,
-            IsActive = true,
-            OwnerId = Guid.NewGuid(),
-            CreatedAt = DateTime.UtcNow,
+            IsActive = isActive,
+            OwnerId = ownerId ?? Guid.NewGuid(),
+            ImagesUrls = imagesUrls,
+            CreatedAt = createdAt ?? DateTime.UtcNow,
             Contact = new ContactInfo
             {
-                ManagerId = Guid.NewGuid(),
+                ManagerId = managerId ?? Guid.NewGuid(),
                 PersonName = "TestName",
                 PersonPhone = "81234567890",
                 SocialsUrls = null,
