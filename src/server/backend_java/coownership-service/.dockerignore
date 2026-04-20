@@ -1,0 +1,63 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Maven
+target/
+.m2/
+*.jar
+*.war
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+.flattened-pom.xml
+
+# Gradle
+build/
+.gradle
+*.gradle
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.docker/
+.dockerignore
+
+# Documentation
+*.md
+docs/
+HELP.md
+
+# Testing
+.mvnw
+mvnw.cmd
+mvnw
+.env
+.env.local
+
+# Node (for frontend dependencies if any)
+node_modules/
+package-lock.json
+yarn.lock
+
+# OS
+Thumbs.db
+
