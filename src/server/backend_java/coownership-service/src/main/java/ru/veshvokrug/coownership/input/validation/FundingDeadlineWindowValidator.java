@@ -8,7 +8,8 @@ import java.time.LocalDate;
 /**
  * @author Dmitrii Marchenko 19.04.2026
  */
-public class FundingDeadlineWindowValidator implements ConstraintValidator<FundingDeadlineWindow, LocalDate> {
+public class FundingDeadlineWindowValidator implements
+        ConstraintValidator<FundingDeadlineWindow, LocalDate> {
     @Override
     public boolean isValid(LocalDate value, ConstraintValidatorContext context) {
         if (value == null) {

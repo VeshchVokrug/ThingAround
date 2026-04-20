@@ -17,6 +17,18 @@ spring:
   liquibase:
     enabled: true
     change-log: classpath:/db/changelog/db.changelog-master.yaml
+  task:
+    scheduling:
+      pool:
+        size: 2
+      thread-name-prefix: co-ownership-scheduler-
+
+# Scheduler config for notification cleanup
+coownership:
+  notification:
+    purge-interval-ms: 3600000  # 1 hour in milliseconds
+    purge-initial-delay-ms: 60000  # 1 minute initial delay
+    storage-retention-days: 30  # Delete notifications older than 30 days
 server:
   port: 6767
   servlet:

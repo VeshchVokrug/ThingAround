@@ -17,6 +17,12 @@ import java.util.UUID;
 @Entity
 @Table(name = "coownership_listings")
 public class CoownershipListing extends AuditableEntity {
+    @Column(name = "name", nullable = false, length = 128)
+    private String name;
+
+    @Column(name = "description", length = 1024)
+    private String description;
+
     @Column(
             name = "price",
             nullable = false,
@@ -59,6 +65,22 @@ public class CoownershipListing extends AuditableEntity {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public UUID getCatalogListingId() {
