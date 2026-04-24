@@ -16,11 +16,14 @@ namespace Gateway;
 
 public class Program
 {
+	private const string ReactCorsPolicy = "ReactAppPolicy";
+	
 	public static async Task Main(string[] args)
 	{
 		var builder = WebApplication.CreateBuilder(args);
 
 		ConfigureControllers(builder.Services);
+		ConfigureCors(builder.Services, builder.Configuration);
 		ConfigureSwagger(builder.Services);
 		ConfigureInfrastructure(builder.Services, builder.Configuration);
 		ConfigureGrpcClients(builder.Services, builder.Configuration);
@@ -32,6 +35,26 @@ public class Program
 		ConfigurePipeline(app);
 
 		await app.RunAsync();
+	}
+
+	private static void ConfigureCors(IServiceCollection services, IConfiguration configuration)
+	{
+		var allowedOrigins = configuration.GetSection("CorsSettings:AllowedOrigins").Get<string[]>();
+
+		services.AddCors(options =>
+		{
+			options.AddPolicy(name: ReactCorsPolicy,
+				policy =>
+				{
+					if (allowedOrigins != null && allowedOrigins.Length != 0)
+					{
+						policy.WithOrigins(allowedOrigins)
+							.AllowAnyHeader()
+							.AllowAnyMethod()
+							.AllowCredentials();
+					}
+				});
+		});
 	}
 
 	private static void ConfigureSwagger(IServiceCollection services)
@@ -194,9 +217,11 @@ public class Program
 			app.UseSwagger();
 			app.UseSwaggerUI();
 		}
-
+		
 		app.UseMiddleware<GatewayExceptionMiddleware>();
 
+		app.UseCors(ReactCorsPolicy);
+		
 		app.UseAuthentication();
 		app.UseAuthorization();
 
