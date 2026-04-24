@@ -4,7 +4,6 @@ using Catalog.Contracts.Auth;
 using Catalog.Contracts.DTO.AvailableSlot;
 using Catalog.Contracts.DTO.Listing.Rental;
 using Catalog.Contracts.Repository.Abstractions;
-using Domain.Entity;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Services;

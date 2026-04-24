@@ -59,7 +59,7 @@
 - Запущенный `IdentityProfileService` на `http://localhost:5000`
 - Файл `Gateway/Configs/public.pem`
 
-Из корня `backend_C_sharp`:
+Из корня `server`:
 
 ```powershell
 dotnet restore .\Gateway\Gateway.csproj

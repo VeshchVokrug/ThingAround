@@ -44,7 +44,7 @@ services:
   identity-profile:
     build:
       context: .
-      dockerfile: IdentityProfileService/Dockerfile
+      dockerfile: backend_C_sharp/IdentityProfileService/Dockerfile
     container_name: identity_profile_service
     ports:
       - "5000:8080"
@@ -54,8 +54,8 @@ services:
       - ConnectionStrings__PostgresConnectionString=Host=db;Port=5432;Database=identity_db;Username=admin;Password=admin
       - ConnectionStrings__Redis=redis:6379,abortConnect=false
     volumes:
-      - ./IdentityProfileService/Configs:/app/Configs:ro
-      - ./Core/Configs:/app/Core/Configs:ro
+      - ./backend_C_sharp/IdentityProfileService/Configs:/app/Configs:ro
+      - ./backend_C_sharp/Core/Configs:/app/Core/Configs:ro
     networks:
       - thingaround-network
     depends_on:
@@ -65,7 +65,7 @@ services:
   gateway:
     build:
       context: .
-      dockerfile: Gateway/Dockerfile
+      dockerfile: backend_C_sharp/Gateway/Dockerfile
     container_name: gateway
     ports:
       - "8080:8080"
@@ -77,7 +77,7 @@ services:
       - Jwt__Issuer=ThingAround.IdentityServer
       - Jwt__Audience=ThingAround.Client
     volumes:
-      - ./Gateway/Configs:/app/Configs:ro
+      - ./backend_C_sharp/Gateway/Configs:/app/Configs:ro
     networks:
       - thingaround-network
     depends_on:
