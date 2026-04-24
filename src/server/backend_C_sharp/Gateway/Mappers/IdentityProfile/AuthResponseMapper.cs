@@ -11,7 +11,6 @@ public static class AuthResponseMapper
         return new AuthResponse
         {
             AccessToken = source.AccessToken,
-            RefreshToken = source.RefreshToken,
             RefreshTokenExpiresHours = source.RefreshTokenExpiresHours
         };
     }

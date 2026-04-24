@@ -36,6 +36,7 @@ public class GrpcIdentityProfileService : IdentityProfileService.Grpc.IdentityPr
         return result.ToGrpc();
     }
     
+    [AllowAnonymous]
     public override async Task<AuthResponse> Refresh(RefreshRequest request, ServerCallContext context)
     {
         var result = await _authService.RefreshAsync(request.AccessToken, request.RefreshToken, context.CancellationToken);

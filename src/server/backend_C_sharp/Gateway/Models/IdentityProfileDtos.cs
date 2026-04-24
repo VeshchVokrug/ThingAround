@@ -16,16 +16,6 @@ public sealed record AuthRequest
 public sealed record RefreshRequest
 {
     public string AccessToken { get; init; } = string.Empty;
-
-    public string RefreshToken { get; init; } = string.Empty;
-}
-
-/// <summary>
-/// Запрос на выход пользователя.
-/// </summary>
-public sealed record LogoutRequest
-{
-    public string RefreshToken { get; init; } = string.Empty;
 }
 
 /// <summary>
@@ -66,8 +56,6 @@ public sealed record CategoriesRequest
 public sealed record AuthResponse
 {
     public string AccessToken { get; init; } = string.Empty;
-
-    public string RefreshToken { get; init; } = string.Empty;
 
     public string RefreshTokenExpiresHours { get; init; } = string.Empty;
 }

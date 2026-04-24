@@ -6,8 +6,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProfileService", "I
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core", "..\Core\Core.csproj", "{0184598E-C578-4049-865E-110DBBF622D8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Protos", "..\Protos\Protos.csproj", "{05EA36C4-1A51-42AD-882E-5EAC728B182C}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -22,10 +20,10 @@ Global
 		{0184598E-C578-4049-865E-110DBBF622D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0184598E-C578-4049-865E-110DBBF622D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0184598E-C578-4049-865E-110DBBF622D8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{05EA36C4-1A51-42AD-882E-5EAC728B182C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{05EA36C4-1A51-42AD-882E-5EAC728B182C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{05EA36C4-1A51-42AD-882E-5EAC728B182C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{05EA36C4-1A51-42AD-882E-5EAC728B182C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A30958ED-5E14-47B1-B8CC-A4ACBF3AD23B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A30958ED-5E14-47B1-B8CC-A4ACBF3AD23B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A30958ED-5E14-47B1-B8CC-A4ACBF3AD23B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A30958ED-5E14-47B1-B8CC-A4ACBF3AD23B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{96850249-56ED-47EB-9264-3D8BB9628F6C} = {D0A589E8-EB0D-46ED-ACAB-BC5844C3CA71}

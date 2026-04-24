@@ -1,0 +1,6 @@
+﻿# Local infrastructure runtime data
+Db/persistence/
+Redis/Data/
+
+*.obj
+Protos/obj/

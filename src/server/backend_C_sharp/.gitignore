@@ -423,11 +423,6 @@ FodyWeavers.xsd
 #Admins.json
 admins.json
 
-#Persistence
-Db/persistence
-
 #Secrets
 *.pem
 
-#Redis
-Redis/Data

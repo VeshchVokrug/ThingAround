@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Reflection;
+using System.Text.Json.Serialization;
 using Core.Caching;
 using Gateway.Infrastructure.Auth;
 using Gateway.Infrastructure.Middleware;
@@ -79,6 +80,11 @@ public class Program
 	{
 		services
 			.AddControllers()
+			.AddJsonOptions(options =>
+			{
+				options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+				options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+			})
 			.ConfigureApiBehaviorOptions(options =>
 			{
 				options.InvalidModelStateResponseFactory = context =>

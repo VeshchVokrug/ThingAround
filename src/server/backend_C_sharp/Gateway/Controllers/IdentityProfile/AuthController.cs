@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using AuthRequest = Gateway.Models.AuthRequest;
 using AuthResponse = Gateway.Models.AuthResponse;
-using LogoutRequest = Gateway.Models.LogoutRequest;
 using RefreshRequest = Gateway.Models.RefreshRequest;
 
 namespace Gateway.Controllers.IdentityProfile;
@@ -19,7 +18,8 @@ namespace Gateway.Controllers.IdentityProfile;
 public class AuthController : ControllerBase
 {
     private readonly IdentityProfileInternal.IdentityProfileInternalClient _client;
-
+    private const string RefreshTokenCookieName = "refreshToken";
+    
     public AuthController(IdentityProfileInternal.IdentityProfileInternalClient client)
     {
         _client = client;
@@ -38,8 +38,11 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> Register([FromBody] AuthRequest request, CancellationToken ct)
     {
         var grpcResponse = await _client.RegisterAsync(request.ToGrpc(), cancellationToken: ct);
-
-        return Ok(grpcResponse.ToDto());
+        var authDto = grpcResponse.ToDto();
+        
+        SetRefreshTokenCookie(grpcResponse.RefreshToken, grpcResponse.RefreshTokenExpiresHours);
+        
+        return Ok(authDto);
     }
 
     /// <summary>
@@ -56,42 +59,80 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> Login([FromBody] AuthRequest request, CancellationToken ct)
     {
         var grpcResponse = await _client.LoginAsync(request.ToGrpc(), cancellationToken: ct);
-
-        return Ok(grpcResponse.ToDto()); 
+        var authDto = grpcResponse.ToDto();
+        
+        SetRefreshTokenCookie(grpcResponse.RefreshToken, grpcResponse.RefreshTokenExpiresHours);
+        
+        return Ok(authDto); 
     }
 
     /// <summary>
     /// Обновляет access-токен по паре access/refresh токенов.
     /// </summary>
-    /// <param name="request">Текущие access и refresh токены.</param>
+    /// <param name="request">Текущий access токен.</param>
     /// <param name="ct">Токен отмены запроса.</param>
     /// <returns>Новая пара access/refresh токенов.</returns>
+    [AllowAnonymous]
     [HttpPost("refresh")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponse>> Refresh([FromBody] RefreshRequest request, CancellationToken ct)
     {
-        var grpcResponse = await _client.RefreshAsync(request.ToGrpc(), Request.ToAuthorizationMetadata(), cancellationToken: ct);
+        Request.Cookies.TryGetValue(RefreshTokenCookieName, out var refreshToken);
 
-        return Ok(grpcResponse.ToDto());
+        if (string.IsNullOrEmpty(refreshToken))
+        {
+            return Unauthorized(new ApiErrorResponse(StatusCodes.Status401Unauthorized,"Refresh token is missing"));
+        }
+        
+        var grpcResponse = await _client.RefreshAsync(request.ToGrpc(refreshToken), Request.ToAuthorizationMetadata(), cancellationToken: ct);
+        var authDto = grpcResponse.ToDto();
+
+        SetRefreshTokenCookie(grpcResponse.RefreshToken, grpcResponse.RefreshTokenExpiresHours);
+        
+        return Ok(authDto);
     }
 
     /// <summary>
     /// Выход пользователя с отзывом refresh-токена.
     /// </summary>
-    /// <param name="request">Refresh-токен для отзыва.</param>
     /// <param name="ct">Токен отмены запроса.</param>
     /// <returns>Пустой ответ при успешном выходе.</returns>
     [HttpPost("logout")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Logout([FromBody] LogoutRequest request, CancellationToken ct)
+    public async Task<IActionResult> Logout(CancellationToken ct)
     {
-        await _client.LogoutAsync(request.ToGrpc(), Request.ToAuthorizationMetadata(), cancellationToken: ct);
-
+        Request.Cookies.TryGetValue(RefreshTokenCookieName, out var refreshToken);
+        
+        var grpcRequest = new IdentityProfileService.Grpc.LogoutRequest { RefreshToken = refreshToken };
+        
+        await _client.LogoutAsync(grpcRequest, Request.ToAuthorizationMetadata(), cancellationToken: ct);
+        
+        Response.Cookies.Delete(RefreshTokenCookieName);
+        
         return NoContent();
+    }
+    
+    private void SetRefreshTokenCookie(string token, string expiresHoursStr)
+    {
+        if (string.IsNullOrEmpty(token)) return;
+        
+        if (!double.TryParse(expiresHoursStr, out var expiresHours))
+            expiresHours = 72; 
+
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Expires = DateTimeOffset.UtcNow.AddHours(expiresHours),
+            Path = "/"
+        };
+
+        Response.Cookies.Append(RefreshTokenCookieName, token, cookieOptions);
     }
 }
 

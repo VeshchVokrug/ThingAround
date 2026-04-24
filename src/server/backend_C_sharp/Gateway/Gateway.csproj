@@ -9,8 +9,8 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\Protos\Protos.csproj" />
       <ProjectReference Include="..\Core\Core.csproj" />
-      <ProjectReference Include="..\Protos\Protos.csproj" />
     </ItemGroup>
 
     <ItemGroup>

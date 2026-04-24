@@ -4,12 +4,12 @@ namespace Gateway.Mappers.IdentityProfile;
 
 public static class RefreshRequestDtoMapper
 {
-    public static IdentityProfileService.Grpc.RefreshRequest ToGrpc(this RefreshRequest source)
+    public static IdentityProfileService.Grpc.RefreshRequest ToGrpc(this RefreshRequest source, string refreshToken)
     {
         return new IdentityProfileService.Grpc.RefreshRequest
         {
             AccessToken = source.AccessToken,
-            RefreshToken = source.RefreshToken
+            RefreshToken = refreshToken,
         };
     }
 }
