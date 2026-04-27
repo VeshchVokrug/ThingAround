@@ -11,10 +11,10 @@ public record CreateRentalListingDto
     public List<string>? ImagesUrls { get; set; }
     public string City { get; set; }
     public int DefaultPrice { get; set; }
-    public Guid OwnerId { get; set; }
-    public float OwnerRating { get; set; }
-    public string OwnerName { get; set; }
-    public string OwnerPhone { get; set; }
-    public List<string>? OwnerSocialsUrls { get; set; }
-    public List<AvailableSlotDto> AvailableSlots { get; set; }
+    public Guid ManagerId { get; set; }
+    public float ManagerRating { get; set; }
+    public string ManagerName { get; set; }
+    public string ManagerPhone { get; set; }
+    public List<string>? ManagerSocialsUrls { get; set; }
+    public List<DateOnly> BusyDates { get; set; }
 }

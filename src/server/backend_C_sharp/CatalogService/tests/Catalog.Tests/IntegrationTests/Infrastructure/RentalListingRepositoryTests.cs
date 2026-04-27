@@ -81,12 +81,13 @@ public class RentalListingRepositoryTests
 
         // Assert
         result.Should().NotBeNull();
-        result!.Id.Should().Be(listing.Id);
+        result.Id.Should().Be(listing.Id);
         result.Title.Should().Be("Drill Makita");
         result.ImagesUrls.Should().ContainSingle().Which.Should().Be("main.jpg");
         result.OwnerId.Should().Be(ownerId);
-        result.AvailableSlots.Should().ContainSingle();
-        result.AvailableSlots.Single().Date.Should().Be(availableDate);
+        result.AvailabilitySlots.Should().HaveCount(2);
+        result.AvailabilitySlots.Select(x => x.Date)
+            .Should().Contain([availableDate, availableDate.AddDays(1)]);
     }
 
     [Fact]
@@ -126,7 +127,7 @@ public class RentalListingRepositoryTests
         await context.SaveChangesAsync();
 
         // Act
-        var result = (await sut.GetAllByUser(ownerId)).ToList();
+        var result = (await sut.GetAllByUserAsync(ownerId)).ToList();
 
         // Assert
         result.Should().HaveCount(2);
@@ -134,7 +135,7 @@ public class RentalListingRepositoryTests
     }
 
     [Fact]
-    public async Task CreateAsync_ValidDto_ShouldPersistListingAndReturnId()
+    public async Task CreateAsync_ValidEntity_ShouldPersistListingAndReturnId()
     {
         // Arrange
         using var context = _fixture.CreateContext();
@@ -151,34 +152,61 @@ public class RentalListingRepositoryTests
             ImagesUrls = ["camera.jpg"],
             City = "Spb",
             DefaultPrice = 2500,
-            OwnerId = ownerId,
-            OwnerRating = 4.8f,
-            OwnerName = "Alex",
-            OwnerPhone = "81234567890",
-            OwnerSocialsUrls = ["https://t.me/alex"],
-            AvailableSlots = []
+            ManagerId = ownerId,
+            ManagerRating = 4.8f,
+            ManagerName = "Alex",
+            ManagerPhone = "81234567890",
+            ManagerSocialsUrls = ["https://t.me/alex"],
+            BusyDates = []
+        };
+
+        var listing = new RentalListing
+        {
+            TitleSlug = dto.TitleSlug,
+            CategorySlug = dto.CategorySlug,
+            Title = dto.Title,
+            Description = dto.Description,
+            ImagesUrls = dto.ImagesUrls,
+            City = dto.City,
+            DefaultPrice = dto.DefaultPrice,
+            OwnerId = dto.ManagerId,
+            OwnerRating = dto.ManagerRating,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            Contact = new ContactInfo
+            {
+                ManagerId = dto.ManagerId,
+                PersonName = dto.ManagerName,
+                PersonPhone = dto.ManagerPhone,
+                SocialsUrls = dto.ManagerSocialsUrls
+            }
         };
 
         // Act
-        var createdId = await sut.CreateAsync(dto);
+        var createdId = await sut.CreateAsync(listing, dto.BusyDates);
+        await context.SaveChangesAsync();
 
         // Assert
         createdId.Should().NotBeEmpty();
 
         using var assertContext = _fixture.CreateContext();
-        var saved = await assertContext.RentalListings.FirstOrDefaultAsync(x => x.Id == createdId);
+        var saved = await assertContext.RentalListings
+            .Include(x => x.Contact)
+            .FirstOrDefaultAsync(x => x.Id == createdId);
 
         saved.Should().NotBeNull();
-        saved!.Title.Should().Be(dto.Title);
+        createdId.Should().Be(listing.Id);
+        saved.Title.Should().Be(dto.Title);
         saved.TitleSlug.Should().Be(dto.TitleSlug);
         saved.CategorySlug.Should().Be(dto.CategorySlug);
         saved.City.Should().Be(dto.City);
         saved.DefaultPrice.Should().Be(dto.DefaultPrice);
-        saved.OwnerId.Should().Be(dto.OwnerId);
+        saved.OwnerId.Should().Be(dto.ManagerId);
         saved.IsActive.Should().BeTrue();
-        saved.Contact.ManagerId.Should().Be(dto.OwnerId);
-        saved.Contact.PersonName.Should().Be(dto.OwnerName);
-        saved.Contact.PersonPhone.Should().Be(dto.OwnerPhone);
+        saved.Contact.ManagerId.Should().Be(dto.ManagerId);
+        saved.Contact.PersonName.Should().Be(dto.ManagerName);
+        saved.Contact.PersonPhone.Should().Be(dto.ManagerPhone);
     }
 
     [Fact]
@@ -195,16 +223,19 @@ public class RentalListingRepositoryTests
         await context.RentalListings.AddAsync(listing);
         await context.SaveChangesAsync();
 
-        var dto = CreateUpdateDto(listing.Id);
+        var dto = CreateUpdateDto(listing.Id, listing.Version);
 
         // Act
         var updated = await sut.UpdateAsync(dto, ownerId);
+        await sut.SaveChangesAsync();
 
         // Assert
         updated.Should().BeTrue();
 
         using var assertContext = _fixture.CreateContext();
-        var saved = await assertContext.RentalListings.FirstAsync(x => x.Id == listing.Id);
+        var saved = await assertContext.RentalListings
+            .Include(x => x.Contact)
+            .FirstAsync(x => x.Id == listing.Id);
         saved.Title.Should().Be(dto.Title);
         saved.TitleSlug.Should().Be(dto.TitleSlug);
         saved.CategorySlug.Should().Be(dto.CategorySlug);
@@ -231,7 +262,7 @@ public class RentalListingRepositoryTests
         await context.RentalListings.AddAsync(listing);
         await context.SaveChangesAsync();
 
-        var dto = CreateUpdateDto(listing.Id);
+        var dto = CreateUpdateDto(listing.Id, listing.Version);
 
         // Act
         var updated = await sut.UpdateAsync(dto, strangerId);
@@ -261,6 +292,7 @@ public class RentalListingRepositoryTests
 
         // Act
         var removed = await sut.RemoveAsync(listing.Id, ownerId);
+        await sut.SaveChangesAsync();
 
         // Assert
         removed.Should().BeTrue();
@@ -310,6 +342,7 @@ public class RentalListingRepositoryTests
 
         // Act
         var deactivated = await sut.DeactivateAsync(listing.Id, ownerId);
+        await sut.SaveChangesAsync();
 
         // Assert
         deactivated.Should().BeTrue();
@@ -522,11 +555,12 @@ public class RentalListingRepositoryTests
         await context.RentalListings.ExecuteDeleteAsync();
     }
 
-    private static UpdateRentalListingDto CreateUpdateDto(Guid listingId)
+    private static UpdateRentalListingDto CreateUpdateDto(Guid listingId, int version = 1)
     {
         return new UpdateRentalListingDto
         {
             Id = listingId,
+            Version = version,
             CategorySlug = Category.Projectors.ToString(),
             TitleSlug = "updated-title",
             Title = "Updated title",
@@ -539,7 +573,7 @@ public class RentalListingRepositoryTests
             OwnerName = "Updated Owner",
             OwnerPhone = "89990001122",
             OwnerSocialsUrls = ["https://vk.com/updated"],
-            AvailableSlots = []
+            AvailabilitySlots = []
         };
     }
     
@@ -550,6 +584,7 @@ public class RentalListingRepositoryTests
         return new RentalListing
         {
             Id = Guid.NewGuid(),
+            Version = 1,
             Title = title,
             TitleSlug = title.ToLower().Replace(" ", "-"),
             Description = desc,
@@ -561,6 +596,7 @@ public class RentalListingRepositoryTests
             OwnerId = ownerId ?? Guid.NewGuid(),
             ImagesUrls = imagesUrls,
             CreatedAt = createdAt ?? DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
             Contact = new ContactInfo
             {
                 ManagerId = managerId ?? Guid.NewGuid(),

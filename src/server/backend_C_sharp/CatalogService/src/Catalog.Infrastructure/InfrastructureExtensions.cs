@@ -1,6 +1,5 @@
 ﻿using Catalog.Contracts.Repository.Abstractions;
 using Infrastructure.Repository;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure;

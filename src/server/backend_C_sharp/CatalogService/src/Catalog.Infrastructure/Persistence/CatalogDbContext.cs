@@ -48,6 +48,10 @@ public class CatalogDbContext : DbContext
         builder.Property(x => x.UpdatedAt)
             .HasColumnType("timestamp with time zone")
             .HasDefaultValueSql("now()");
+
+        builder.Property(x => x.Version)
+            .IsConcurrencyToken()
+            .HasDefaultValue(1);
         
         builder.Property<NpgsqlTsVector>("SearchVector");
 
@@ -70,9 +74,12 @@ public class CatalogDbContext : DbContext
             .IncludeProperties(x => x.Price); 
         
         builder.Property(x => x.Date).HasColumnType("date");
+        builder.Property(x => x.Version)
+            .IsConcurrencyToken()
+            .HasDefaultValue(1);
         builder.Property(x => x.Price).IsRequired();
         builder.Property(x => x.ReservedAt)
             .HasColumnType("timestamp with time zone")
-            .IsRequired(false);;
+            .IsRequired(false);
     }
 }

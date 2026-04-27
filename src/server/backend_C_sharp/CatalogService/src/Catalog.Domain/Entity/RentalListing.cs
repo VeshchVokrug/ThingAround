@@ -3,6 +3,7 @@
 public class RentalListing
 {
     public Guid Id { get; set; }
+    public int Version { get; set; }
     public string TitleSlug { get; set; }
     public Guid OwnerId { get; set; }
     public required string CategorySlug { get; set; }

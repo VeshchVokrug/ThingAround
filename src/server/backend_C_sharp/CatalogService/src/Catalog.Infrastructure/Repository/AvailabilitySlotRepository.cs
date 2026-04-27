@@ -17,87 +17,116 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
         _timeProvider = timeProvider;
     }
 
+    public async Task<IRepositoryTransaction> BeginTransactionAsync(CancellationToken ct = default)
+    {
+        var transaction = await _context.Database.BeginTransactionAsync(ct);
+        return new RepositoryTransaction(transaction);
+    }
+
+    public Task<int> SaveChangesAsync(CancellationToken ct = default)
+    {
+        return _context.SaveChangesAsync(ct);
+    }
+
     private DateOnly Today => DateOnly.FromDateTime(_timeProvider.GetUtcNow().DateTime);
 
-    public async Task CreateAvailabilitySlotAsync(Guid listingId, int price, DateOnly date, CancellationToken ct = default)
+    public async Task CreateAsync(Guid listingId, int price, DateOnly date, CancellationToken ct = default)
     {
         await _context.AvailabilitySlots.AddAsync(new AvailabilitySlot
         {
             ListingId = listingId,
             Date = date,
+            Version = 1,
             IsAvailable = true,
             Price = price
         }, ct);
-        
-        await _context.SaveChangesAsync(ct);
     }
 
-    public async Task CreateInitialSlotsAsync(Guid listingId, int defaultPrice, IEnumerable<DateOnly> busyDates,
-        CancellationToken ct = default)
+    public void PrepareInitialSlots(Guid listingId, int defaultPrice, IEnumerable<DateOnly> busyDates)
     {
         var busyDaysSet = new HashSet<DateOnly>(busyDates);
-
         var slots = new List<AvailabilitySlot>(60);
 
         for (var i = 0; i < 60; i++)
         {
             var date = Today.AddDays(i);
+            var isBusy = busyDaysSet.Contains(date);
             slots.Add(new AvailabilitySlot
             {
                 ListingId = listingId,
                 Date = date,
+                Version = 1,
                 Price = defaultPrice,
-                IsAvailable = !busyDaysSet.Contains(date)
+                IsAvailable = !isBusy,
+                ReservedAt = isBusy ? _timeProvider.GetUtcNow().UtcDateTime : null
             });
         }
 
-        await _context.AvailabilitySlots.AddRangeAsync(slots, ct);
-        await _context.SaveChangesAsync(ct);
+        _context.AvailabilitySlots.AddRange(slots);
     }
 
-    public async Task<IEnumerable<AvailableSlotDto>> GetAvailabilitySlotsAsync(Guid listingId, CancellationToken ct = default)
+    public async Task<List<AvailabilitySlotDto>> GetTwoMonthSlotsAsync(Guid listingId, CancellationToken ct = default)
     {
         var horizon = Today.AddDays(60);
 
         return await _context.AvailabilitySlots
             .AsNoTracking()
             .Where(s => 
-                s.ListingId == listingId 
-                && s.IsAvailable 
+                s.ListingId == listingId
                 && s.Date >= Today 
                 && s.Date <= horizon)
             .OrderBy(s => s.Date)
-            .Select(s => new AvailableSlotDto
+            .Select(s => new AvailabilitySlotDto
             {
                 Date = s.Date,
+                Version = s.Version,
                 Price = s.Price,
-                IsReversible = s.IsAvailable && s.BookingId == null
+                IsAvailable =  s.IsAvailable,
+                IsReversible = s.BookingId == null,
+                ReservedAt = s.ReservedAt,
+                BookingId = s.BookingId
             })
             .ToListAsync(ct);
     }
 
     public async Task<bool> TryReserveSlotsAsync(Guid listingId, IEnumerable<DateOnly> dates, Guid? bookingId = null, CancellationToken ct = default)
     {
-        var datesList = dates as IReadOnlyCollection<DateOnly> ?? dates.ToList();
+        var datesList = dates
+            .Distinct()
+            .ToList();
+
+        if (datesList.Count == 0)
+        {
+            return false;
+        }
         
-        await _context.AvailabilitySlots
-            .Where(s => 
-                s.ListingId == listingId 
-                && datesList.Contains(s.Date) 
-                && s.IsAvailable)
-            .ExecuteUpdateAsync(sp => sp
-                .SetProperty(s => s.IsAvailable, false)
-                .SetProperty(s => s.BookingId, bookingId)
-                .SetProperty(s => s.ReservedAt, _timeProvider.GetUtcNow().UtcDateTime), ct);
-        
-        var totalReserved = await _context.AvailabilitySlots
-            .CountAsync(s => 
-                s.ListingId == listingId 
-                && datesList.Contains(s.Date) 
-                && s.IsAvailable == false
-                && s.BookingId == bookingId, ct);
-        
-        return totalReserved == datesList.Count;
+        var listing = await _context.RentalListings
+            .FirstOrDefaultAsync(x => x.Id == listingId, ct);
+
+        if (listing == null || !listing.IsActive)
+        {
+            return false;
+        }
+
+        var slots = await _context.AvailabilitySlots
+            .Where(s => s.ListingId == listingId && datesList.Contains(s.Date))
+            .ToListAsync(ct);
+
+        if (slots.Count != datesList.Count || slots.Any(s => !s.IsAvailable))
+        {
+            return false;
+        }
+
+        var reserveAt = _timeProvider.GetUtcNow().UtcDateTime;
+        foreach (var slot in slots)
+        {
+            slot.IsAvailable = false;
+            slot.BookingId = bookingId;
+            slot.ReservedAt = reserveAt;
+            slot.Version++;
+        }
+
+        return true;
     }
 
     public async Task CancelReservationAsync(Guid listingId, IEnumerable<DateOnly> dates,
@@ -109,36 +138,81 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
             return;
         }
 
-        var query = _context.AvailabilitySlots
+        var slots = await _context.AvailabilitySlots
             .Where(s => s.ListingId == listingId)
             .Where(s => datesList.Contains(s.Date))
             .Where(s => !s.IsAvailable)
-            .Where(s => s.BookingId == bookingId);
+            .Where(s => s.BookingId == bookingId)
+            .ToListAsync(ct);
 
-        await query.ExecuteUpdateAsync(sp => sp
-            .SetProperty(s => s.IsAvailable, true)
-            .SetProperty(s => s.ReservedAt, (DateTime?)null)
-            .SetProperty(s => s.BookingId, (Guid?)null), ct);
+        if (slots.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var slot in slots)
+        {
+            slot.IsAvailable = true;
+            slot.ReservedAt = null;
+            slot.BookingId = null;
+            slot.Version++;
+        }
     }
 
-    public async Task<bool> UpdateSlotPriceAsync(Guid listingId, DateOnly date, int newPrice, CancellationToken ct = default)
+    public async Task<bool> UpdateSlotsPriceAsync(Guid listingId, IEnumerable<AvailabilitySlotDto> slots,
+        int newPrice, CancellationToken ct = default)
     {
-        var updatedCount = await _context.AvailabilitySlots
-            .Where(s => s.ListingId == listingId && s.Date == date)
-            .ExecuteUpdateAsync(sp => 
-                sp.SetProperty(s => s.Price, newPrice), ct);
-        
-        return updatedCount > 0;
+        var slotsList = slots.ToList();
+        if (slotsList.Count == 0)
+        {
+            return false;
+        }
+
+        var expectedByDate = slotsList.ToDictionary(s => s.Date, s => s.Version);
+        var dates = expectedByDate.Keys.ToList();
+
+        var dbSlots = await _context.AvailabilitySlots
+            .Where(s => s.ListingId == listingId)
+            .Where(s => dates.Contains(s.Date))
+            .ToListAsync(ct);
+
+        if (dbSlots.Count != dates.Count)
+        {
+            return false;
+        }
+
+        foreach (var slot in dbSlots)
+        {
+            var expectedVersion = expectedByDate[slot.Date];
+            if (slot.Version != expectedVersion)
+            {
+                throw new DbUpdateConcurrencyException($"Availability slot version conflict for listing '{listingId}' and date '{slot.Date}'.");
+            }
+
+            if (!slot.IsAvailable)
+            {
+                return false;
+            }
+
+            slot.Price = newPrice;
+            slot.Version++;
+        }
+
+        return true;
     }
 
-    public async Task<int> RemoveAvailabilitySlotAsync(Guid listingId, DateOnly date, CancellationToken ct = default)
+    public async Task<int> RemoveAsync(Guid listingId, DateOnly date, CancellationToken ct = default)
     {
-        var removedSlots = await _context.AvailabilitySlots
-            .Where(s => 
-                s.ListingId == listingId 
-                && s.Date == date)
-            .ExecuteDeleteAsync(ct);
-        
-        return removedSlots;
+        var slot = await _context.AvailabilitySlots
+            .FirstOrDefaultAsync(s => s.ListingId == listingId && s.Date == date, ct);
+
+        if (slot == null)
+        {
+            return 0;
+        }
+
+        _context.AvailabilitySlots.Remove(slot);
+
+        return 1;
     }
 }

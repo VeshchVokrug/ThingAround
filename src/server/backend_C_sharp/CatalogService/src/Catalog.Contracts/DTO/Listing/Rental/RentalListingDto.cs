@@ -5,6 +5,7 @@ namespace Catalog.Contracts.DTO.Listing.Rental;
 public record RentalListingDto
 {
     public Guid Id { get; set; }
+    public int Version { get; set; }
     public string TitleSlug { get; set; }
     public required string CategorySlug { get; set; }
     public string Title { get; set; }
@@ -20,5 +21,5 @@ public record RentalListingDto
     public string OwnerName { get; set; }
     public string OwnerPhone { get; set; }
     public List<string>? OwnerSocialsUrls { get; set; }
-    public List<AvailableSlotDto> AvailableSlots { get; set; }
+    public List<AvailabilitySlotDto> AvailabilitySlots { get; set; }
 }

@@ -1,5 +1,4 @@
-﻿using Catalog.Contracts.DTO.AvailableSlot;
-using Domain.Entity;
+﻿using Domain.Entity;
 using FluentAssertions;
 using Infrastructure.Persistence;
 using Infrastructure.Repository;
@@ -28,12 +27,15 @@ public class AvailabilitySlotRepositoryTests
     {
         // Arrange
         using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
         var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var date = new DateOnly(2026, 5, 1);
+        await SeedListingAsync(context, listingId);
 
         // Act
-        await sut.CreateAvailabilitySlotAsync(listingId, 500, date);
+        await sut.CreateAsync(listingId, 500, date);
+        await sut.SaveChangesAsync();
 
         // Assert
         var slot = await context.AvailabilitySlots.FirstOrDefaultAsync(s => s.ListingId == listingId);
@@ -47,8 +49,10 @@ public class AvailabilitySlotRepositoryTests
     {
         // Arrange
         using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
         var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
+        await SeedListingAsync(context, listingId);
     
         var today = DateOnly.FromDateTime(_timeProvider.GetUtcNow().DateTime);
         var busyDate = today.AddDays(2);
@@ -56,7 +60,8 @@ public class AvailabilitySlotRepositoryTests
         var busyDates = new List<DateOnly> { busyDate };
 
         // Act
-        await sut.CreateInitialSlotsAsync(listingId, 100, busyDates, CancellationToken.None);
+        sut.PrepareInitialSlots(listingId, 100, busyDates);
+        await sut.SaveChangesAsync();
 
         // Assert
         var slots = await context.AvailabilitySlots
@@ -72,13 +77,15 @@ public class AvailabilitySlotRepositoryTests
     }
     
     [Fact]
-    public async Task GetAvailabilitySlotsAsync_ShouldReturnOnlyAvailableSlotsWithin60Days()
+    public async Task GetAvailabilitySlotsAsync_ShouldReturnAllSlotsWithin60Days()
     {
         // Arrange
         using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
         var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var today = DateOnly.FromDateTime(_timeProvider.GetUtcNow().DateTime);
+        await SeedListingAsync(context, listingId);
 
         var validDate = today.AddDays(10);
         var tooFarDate = today.AddDays(61);
@@ -91,23 +98,25 @@ public class AvailabilitySlotRepositoryTests
         await context.SaveChangesAsync();
 
         // Act
-        var result = await sut.GetAvailabilitySlotsAsync(listingId);
+        var result = await sut.GetTwoMonthSlotsAsync(listingId);
 
         // Assert
-        var availabilitySlotDtos = result as List<AvailableSlotDto> ?? result.ToList();
-        availabilitySlotDtos.Should().ContainSingle();
-        availabilitySlotDtos.First().Date.Should().Be(validDate);
+        result.Should().HaveCount(2);
+        result.Select(x => x.Date).Should().Contain([today, validDate]);
+        result.Should().NotContain(x => x.Date == tooFarDate);
     }
     
     [Fact]
-    public async Task TryReserveSlotsAsync_OwnerClosesDates_ShouldBeCorrectAndIdempotent()
+    public async Task TryReserveSlotsAsync_OwnerClosesDates_RepeatedCallShouldReturnFalseAndKeepReservation()
     {
         // Arrange
         using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
         var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         Guid? bookingId = null;
         var date = new DateOnly(2026, 4, 15);
+        await SeedListingAsync(context, listingId);
         
         context.AvailabilitySlots.Add(new AvailabilitySlot 
         { 
@@ -122,6 +131,7 @@ public class AvailabilitySlotRepositoryTests
         
         // Act
         var firstResult = await sut.TryReserveSlotsAsync(listingId, [date], bookingId);
+        await sut.SaveChangesAsync();
         
         firstResult.Should().BeTrue();
         
@@ -139,7 +149,7 @@ public class AvailabilitySlotRepositoryTests
             var secondResult = await sut.TryReserveSlotsAsync(listingId, [date], bookingId);
 
             // Assert
-            secondResult.Should().BeTrue(); 
+            secondResult.Should().BeFalse(); 
 
             using (var context2 = _fixture.CreateContext())
             {
@@ -158,11 +168,13 @@ public class AvailabilitySlotRepositoryTests
     {
         // Arrange
         using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
         var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var bookingId = Guid.NewGuid();
         var date = new DateOnly(2026, 4, 15);
         var now = _timeProvider.GetUtcNow().UtcDateTime;
+        await SeedListingAsync(context, listingId);
 
         context.AvailabilitySlots.Add(new AvailabilitySlot 
         { 
@@ -172,6 +184,7 @@ public class AvailabilitySlotRepositoryTests
 
         // Act
         var result = await sut.TryReserveSlotsAsync(listingId, [date], bookingId);
+        await sut.SaveChangesAsync();
 
         // Assert
         result.Should().BeTrue();
@@ -189,6 +202,7 @@ public class AvailabilitySlotRepositoryTests
     {
         // Arrange
         using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
         var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var date = new DateOnly(2026, 4, 20);
@@ -201,6 +215,7 @@ public class AvailabilitySlotRepositoryTests
 
         // Act
         await sut.CancelReservationAsync(listingId, [date]);
+        await sut.SaveChangesAsync();
 
         // Assert
         using var assertContext = _fixture.CreateContext();
@@ -214,6 +229,7 @@ public class AvailabilitySlotRepositoryTests
     {
         // Arrange
         using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
         var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var date = new DateOnly(2026, 4, 20);
@@ -227,6 +243,7 @@ public class AvailabilitySlotRepositoryTests
 
         // Act
         await sut.CancelReservationAsync(listingId, [date]);
+        await sut.SaveChangesAsync();
 
         // Assert
         using var assertContext = _fixture.CreateContext();
@@ -239,6 +256,7 @@ public class AvailabilitySlotRepositoryTests
     {
         // Arrange
         using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
         var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var targetBookingId = Guid.NewGuid();
@@ -254,6 +272,7 @@ public class AvailabilitySlotRepositoryTests
 
         // Act
         await sut.CancelReservationAsync(listingId, [date1, date2], targetBookingId);
+        await sut.SaveChangesAsync();
 
         // Assert
         using var assertContext = _fixture.CreateContext();
@@ -265,52 +284,25 @@ public class AvailabilitySlotRepositoryTests
         slots[1].IsAvailable.Should().BeFalse();
     }
     
-    [Fact]
-    public async Task UpdateSlotPriceAsync_SlotExists_ShouldUpdatePrice()
-    {
-        // Arrange
-        using var context = _fixture.CreateContext();
-        var sut = CreateRepository(context);
-        var listingId = Guid.NewGuid();
-        var date = new DateOnly(2026, 5, 1);
     
-        context.AvailabilitySlots.Add(new AvailabilitySlot 
-        { 
-            ListingId = listingId, 
-            Date = date, 
-            Price = 50 
-        });
-        await context.SaveChangesAsync();
-
-        // Act
-        var result = await sut.UpdateSlotPriceAsync(listingId, date, 150);
-
-        // Assert
-        result.Should().BeTrue();
-
-        using var assertContext = _fixture.CreateContext();
-        
-        var updatedSlot = await assertContext.AvailabilitySlots
-            .FirstOrDefaultAsync(s => s.ListingId == listingId && s.Date == date);
-
-        updatedSlot.Should().NotBeNull();
-        updatedSlot!.Price.Should().Be(150);
-    }
 
     [Fact]
     public async Task RemoveAvailabilitySlotAsync_ShouldReturnDeletedCountAndRemoveFromDb()
     {
         // Arrange
         using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
         var sut = CreateRepository(context);
         var listingId = Guid.NewGuid();
         var date = new DateOnly(2026, 5, 1);
+        await SeedListingAsync(context, listingId);
     
         context.AvailabilitySlots.Add(new AvailabilitySlot { ListingId = listingId, Date = date, Price = 50 });
         await context.SaveChangesAsync();
 
         // Act
-        var count = await sut.RemoveAvailabilitySlotAsync(listingId, date);
+        var count = await sut.RemoveAsync(listingId, date);
+        await sut.SaveChangesAsync();
 
         // Assert
         count.Should().Be(1);
@@ -321,5 +313,40 @@ public class AvailabilitySlotRepositoryTests
             .AnyAsync(s => s.ListingId == listingId && s.Date == date);
     
         exists.Should().BeFalse("потому что мы удалили конкретно эту запись, а на остальные нам плевать");
+    }
+
+    private static async Task ResetDatabaseAsync(CatalogDbContext context)
+    {
+        await context.AvailabilitySlots.ExecuteDeleteAsync();
+        await context.RentalListings.ExecuteDeleteAsync();
+    }
+
+    private static async Task SeedListingAsync(CatalogDbContext context, Guid listingId, bool isActive = true)
+    {
+        var listing = new RentalListing
+        {
+            Id = listingId,
+            Version = 1,
+            TitleSlug = $"listing-{listingId:N}",
+            OwnerId = Guid.NewGuid(),
+            CategorySlug = "Camping",
+            Title = "Seed listing",
+            Description = "Seed description",
+            City = "Moscow",
+            DefaultPrice = 100,
+            IsActive = isActive,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            Contact = new ContactInfo
+            {
+                ManagerId = Guid.NewGuid(),
+                PersonName = "Seed Manager",
+                PersonPhone = "79990000000",
+                SocialsUrls = null
+            }
+        };
+
+        await context.RentalListings.AddAsync(listing);
+        await context.SaveChangesAsync();
     }
 }

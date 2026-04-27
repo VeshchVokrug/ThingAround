@@ -1,5 +1,4 @@
 ﻿using Catalog.Contracts.DTO;
-using Catalog.Contracts.DTO.AvailableSlot;
 using Catalog.Contracts.DTO.Listing.Rental;
 using Catalog.Contracts.Repository.Abstractions;
 using Domain.Entity;
@@ -20,6 +19,17 @@ public class RentalListingRepository : IRentalListingRepository
         _availabilitySlotRepository = availabilitySlotRepository;
     }
 
+    public async Task<IRepositoryTransaction> BeginTransactionAsync(CancellationToken ct = default)
+    {
+        var transaction = await _context.Database.BeginTransactionAsync(ct);
+        return new RepositoryTransaction(transaction);
+    }
+
+    public Task<int> SaveChangesAsync(CancellationToken ct = default)
+    {
+        return _context.SaveChangesAsync(ct);
+    }
+
     public async Task<RentalListingDto?> GetAsync(Guid listingId, CancellationToken ct = default)
     {
         var listing = await _context.RentalListings
@@ -28,6 +38,7 @@ public class RentalListingRepository : IRentalListingRepository
             .Select(l => new RentalListingDto
             {
                 Id = l.Id,
+                Version = l.Version,
                 TitleSlug = l.TitleSlug,
                 CategorySlug = l.CategorySlug,
                 Title = l.Title,
@@ -51,12 +62,12 @@ public class RentalListingRepository : IRentalListingRepository
             return null;
         }
         
-        listing.AvailableSlots = (List<AvailableSlotDto>)await _availabilitySlotRepository.GetAvailabilitySlotsAsync(listingId, ct);
+        listing.AvailabilitySlots = await _availabilitySlotRepository.GetTwoMonthSlotsAsync(listingId, ct);
 
         return listing;
     }
 
-    public async Task<IEnumerable<RentalListingCard>> GetAllByUser(Guid ownerId, CancellationToken ct = default)
+    public async Task<List<RentalListingCard>> GetAllByUserAsync(Guid ownerId, CancellationToken ct = default)
     {
         return await _context.RentalListings
             .AsNoTracking()
@@ -80,7 +91,7 @@ public class RentalListingRepository : IRentalListingRepository
         query = query.Where(x => x.IsActive);
         
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
-        {
+        { 
             query = query.Where(x => 
                 EF.Property<NpgsqlTsVector>(x, "SearchVector")
                     .Matches(EF.Functions.WebSearchToTsQuery("russian", request.SearchTerm)));
@@ -123,27 +134,33 @@ public class RentalListingRepository : IRentalListingRepository
                     && slot.IsAvailable) == daysCount);
         }
         
-        var pagedQuery = query
-            .OrderByDescending(x => x.CreatedAt)
-            .Select(x => new
-            {
-                Listing = x,
-                TotalCount = query.Count()
-            })
-            .Skip((request.PageNumber - 1) * request.PageSize)
-            .Take(request.PageSize);
-
-        var result = await pagedQuery.ToListAsync(ct);
+        var totalCount = await query.CountAsync(ct);
         
-        var totalCount = result.FirstOrDefault()?.TotalCount ?? 0;
-        var cards = result.Select(r => new RentalListingCard(
-            ListingId: r.Listing.Id,
-            Title: r.Listing.Title,
-            TitleSlug: r.Listing.TitleSlug,
-            ImageUrl: r.Listing.ImagesUrls?.FirstOrDefault(),
-            PricePerDay: r.Listing.DefaultPrice,
-            OwnerRating: r.Listing.OwnerRating
-        )).ToList();
+        IOrderedQueryable<RentalListing> orderedQuery;
+        
+        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+        {
+            orderedQuery = query.OrderByDescending(x => 
+                EF.Property<NpgsqlTsVector>(x, "SearchVector")
+                    .Rank(EF.Functions.WebSearchToTsQuery("russian", request.SearchTerm)));
+        }
+        else
+        {
+            orderedQuery = query.OrderByDescending(x => x.CreatedAt);
+        }
+        
+        var cards = await orderedQuery
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .Select(x => new RentalListingCard(
+                x.Id,
+                x.Title,
+                x.TitleSlug,
+                x.ImagesUrls != null ? x.ImagesUrls.FirstOrDefault() : null,
+                x.DefaultPrice,
+                x.OwnerRating
+            ))
+            .ToListAsync(ct);
 
         return new PagedResponse<RentalListingCard>(cards, totalCount, request.PageNumber, request.PageSize, request.City);
     }
@@ -154,35 +171,20 @@ public class RentalListingRepository : IRentalListingRepository
             .AnyAsync(l => l.Id == listingId && l.OwnerId == userId, ct);
     }
 
-    public async Task<Guid> CreateAsync(CreateRentalListingDto dto, CancellationToken ct = default)
+    public async Task<Guid> CreateAsync(RentalListing listing, IEnumerable<DateOnly> busyDates, CancellationToken ct = default)
     {
-        var listing = new RentalListing
+        if (listing.Id == Guid.Empty)
         {
-            Id = Guid.NewGuid(),
-            OwnerId = dto.OwnerId,
-            TitleSlug = dto.TitleSlug,
-            CategorySlug = dto.CategorySlug,
-            Title =  dto.Title,
-            Description = dto.Description,
-            City = dto.City,
-            DefaultPrice = dto.DefaultPrice,
-            Contact = new ContactInfo
-            {
-                ManagerId = dto.OwnerId,
-                PersonName = dto.OwnerName,
-                PersonPhone = dto.OwnerPhone,
-                SocialsUrls = dto.OwnerSocialsUrls
-            },
-            IsActive = true,
-            ImagesUrls = dto.ImagesUrls,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-        
-        _context.RentalListings.Add(listing);
-        await _context.SaveChangesAsync(ct);
+            listing.Id = Guid.NewGuid();
+        }
 
-        return listing.Id;
+        var listingId = listing.Id;
+
+        await _context.RentalListings.AddAsync(listing, ct);
+
+        _availabilitySlotRepository.PrepareInitialSlots(listingId, listing.DefaultPrice, busyDates);
+
+        return listingId;
     }
 
     public async Task<bool> UpdateAsync(UpdateRentalListingDto dto, Guid? ownerId = null, CancellationToken ct = default)
@@ -196,19 +198,19 @@ public class RentalListingRepository : IRentalListingRepository
             query = query.Where(x => x.OwnerId == ownerId.Value);
         }
 
-        var listing = await query.FirstOrDefaultAsync(x => x.Id == dto.Id, cancellationToken: ct);        
-        
+        query = query.Where(x => x.Version == dto.Version);
+
+        var listing = await query.FirstOrDefaultAsync(x => x.Id == dto.Id, cancellationToken: ct);
         if (listing == null)
         {
             return false;
         }
-        
+
         listing.Title = dto.Title;
         listing.TitleSlug = dto.TitleSlug;
         listing.CategorySlug = dto.CategorySlug;
         listing.Description = dto.Description;
         listing.City = dto.City;
-        listing.DefaultPrice = dto.DefaultPrice;
         listing.ImagesUrls = dto.ImagesUrls;
         listing.OwnerRating = dto.OwnerRating;
         listing.Contact = new ContactInfo
@@ -218,11 +220,11 @@ public class RentalListingRepository : IRentalListingRepository
             PersonPhone = dto.OwnerPhone,
             SocialsUrls = dto.OwnerSocialsUrls,
         };
-        
+        listing.Version++;
         listing.UpdatedAt = DateTime.UtcNow;
-        
-        await _context.SaveChangesAsync(ct);
-    
+
+        listing.DefaultPrice = dto.DefaultPrice;
+
         return true;
     }
 
@@ -243,8 +245,7 @@ public class RentalListingRepository : IRentalListingRepository
         }
 
         _context.RentalListings.Remove(listing);
-        await _context.SaveChangesAsync(ct);
-    
+
         return true;
     }
 
@@ -265,10 +266,10 @@ public class RentalListingRepository : IRentalListingRepository
         }
         
         listing.IsActive = false;
+        listing.Version++;
         listing.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync(ct);
-    
+
         return true;
     }
 }
