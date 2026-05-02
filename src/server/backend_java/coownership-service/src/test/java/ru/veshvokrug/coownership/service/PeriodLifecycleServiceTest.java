@@ -13,11 +13,13 @@ import ru.veshvokrug.coownership.output.repository.OwnershipShareRepository;
 import ru.veshvokrug.coownership.output.repository.OwnershipSlotsRepository;
 import ru.veshvokrug.coownership.output.repository.PeriodRepository;
 
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -174,5 +176,103 @@ class PeriodLifecycleServiceTest {
         assertThat(nextSlotsCaptor.getValue()).hasSize(31);
 
         verify(outboxEventService, never()).save(eq("PERIOD_SETTLEMENT_READY"), any());
+    }
+
+    @Test
+    void settleFinishedPeriodsWithBookedSlotsSendsSettlementReadyAndCreatesNextPeriod() throws Exception {
+        UUID listingId = UUID.randomUUID();
+        UUID rentalListingId = UUID.randomUUID();
+
+        CoownershipListing listing = new CoownershipListing();
+        listing.setId(listingId);
+        listing.setOwnerId(UUID.randomUUID());
+
+        Period activePeriod = new Period();
+        activePeriod.setId(UUID.randomUUID());
+        activePeriod.setCoownershipListing(listing);
+        activePeriod.setRentalListingId(rentalListingId);
+        activePeriod.setStartDate(LocalDate.of(2026, 4, 1));
+        activePeriod.setEndDate(LocalDate.of(2026, 4, 30));
+        activePeriod.setStatus(PeriodStatus.ACTIVE);
+        activePeriod.setTotalIncome(new BigDecimal("1000.00"));
+
+        OwnershipShare share = new OwnershipShare();
+        share.setId(UUID.randomUUID());
+        UUID ownerId = UUID.randomUUID();
+        share.setOwnerId(ownerId);
+        share.setTemplateDaysMask(0);
+
+        when(periodRepository
+                .findByStatusAndEndDateBefore(PeriodStatus.ACTIVE, LocalDate.of(2026, 4, 19)))
+                .thenReturn(List.of(activePeriod));
+
+        // prepare projection instance for booked slots count
+        OwnershipSlotsRepository.BookedSlotsByOwnerProjection proj = new OwnershipSlotsRepository.BookedSlotsByOwnerProjection() {
+            @Override
+            public UUID getOwnerId() {
+                return ownerId;
+            }
+
+            @Override
+            public long getSlotsCount() {
+                return 10L;
+            }
+        };
+
+        when(ownershipSlotsRepository.countBookedSlotsByOwner(activePeriod.getId()))
+                .thenReturn(List.of(proj));
+        when(periodRepository.save(any(Period.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(ownershipShareRepository.findByCoownershipListing_IdAndOwnerIdIsNotNullOrderByIdAsc(listingId))
+                .thenReturn(List.of(share));
+
+        service.settleFinishedPeriods();
+
+        // period must be settled
+        assertThat(activePeriod.getStatus()).isEqualTo(PeriodStatus.SETTLED);
+
+        // outbox event must be sent and payload must contain expected fields
+        ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(outboxEventService).save(eq("PERIOD_SETTLEMENT_READY"), payloadCaptor.capture());
+        Object payload = payloadCaptor.getValue();
+
+        // payload is a private record inside PeriodLifecycleService; use reflection to inspect
+        Class<?> payloadClass = payload.getClass();
+        Method periodIdMethod = payloadClass.getMethod("periodId");
+        UUID capturedPeriodId = (UUID) periodIdMethod.invoke(payload);
+        assertThat(capturedPeriodId).isEqualTo(activePeriod.getId());
+
+        Method totalIncomeMethod = payloadClass.getMethod("totalIncome");
+        BigDecimal capturedTotalIncome = (BigDecimal) totalIncomeMethod.invoke(payload);
+        assertThat(capturedTotalIncome).isEqualByComparingTo(new BigDecimal("1000.00"));
+
+        Method settlementsMethod = payloadClass.getMethod("settlements");
+        @SuppressWarnings("unchecked")
+        java.util.Collection<Object> settlements = (Collection<Object>) settlementsMethod.invoke(payload);
+        assertThat(settlements).hasSize(1);
+
+        Object firstLine = settlements.iterator().next();
+        Class<?> lineClass = firstLine.getClass();
+        Method ownerIdMethod = lineClass.getMethod("ownerId");
+        Method bookedSlotsMethod = lineClass.getMethod("bookedSlots");
+        Method amountMethod = lineClass.getMethod("amount");
+
+        java.util.UUID capturedOwnerId = (UUID) ownerIdMethod.invoke(firstLine);
+        long capturedBookedSlots = (long) bookedSlotsMethod.invoke(firstLine);
+        BigDecimal capturedAmount = (BigDecimal) amountMethod.invoke(firstLine);
+
+        assertThat(capturedOwnerId).isEqualTo(ownerId);
+        assertThat(capturedBookedSlots).isEqualTo(10L);
+        assertThat(capturedAmount).isEqualByComparingTo(new BigDecimal("1000.00"));
+
+        // next period must be created
+        ArgumentCaptor<Period> periodCaptor = ArgumentCaptor.forClass(Period.class);
+        verify(periodRepository, atLeast(2)).save(periodCaptor.capture());
+        List<Period> savedPeriods = periodCaptor.getAllValues();
+        Period nextPeriod = savedPeriods.getLast();
+        assertThat(nextPeriod.getStatus()).isEqualTo(PeriodStatus.ACTIVE);
+        assertThat(nextPeriod.getStartDate()).isEqualTo(LocalDate.of(2026, 5, 1));
+        assertThat(nextPeriod.getEndDate()).isEqualTo(LocalDate.of(2026, 5, 31));
+        assertThat(nextPeriod.getRentalListingId()).isEqualTo(rentalListingId);
     }
 }
