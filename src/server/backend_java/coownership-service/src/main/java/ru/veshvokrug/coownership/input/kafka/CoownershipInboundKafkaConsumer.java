@@ -1,6 +1,8 @@
 package ru.veshvokrug.coownership.input.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import ru.veshvokrug.coownership.service.InboundEventIdempotencyService;
@@ -17,6 +19,7 @@ import java.util.UUID;
  */
 @Component
 public class CoownershipInboundKafkaConsumer {
+    private static final Logger log = LoggerFactory.getLogger(CoownershipInboundKafkaConsumer.class);
     private static final String CONSUMER_RENTAL_LISTING_CREATED = "coownership-rental-listing-created";
     private static final String CONSUMER_BOOKING_CONFIRMED = "coownership-booking-confirmed";
 
@@ -37,7 +40,10 @@ public class CoownershipInboundKafkaConsumer {
             groupId = "${coownership.kafka.inbound.group-id:coownership-service}"
     )
     public void onRentalListingCreated(String rawMessage) {
-        RentalListingCreatedEvent event = parse(rawMessage, RentalListingCreatedEvent.class);
+        RentalListingCreatedEvent event = parseOrSkip(rawMessage, RentalListingCreatedEvent.class);
+        if (event == null) {
+            return;
+        }
         idempotencyService.executeOnce(event.eventId(), CONSUMER_RENTAL_LISTING_CREATED, () ->
                 periodLifecycleService.linkRentalListing(event.coownershipListingId(), event.rentalListingId())
         );
@@ -48,7 +54,10 @@ public class CoownershipInboundKafkaConsumer {
             groupId = "${coownership.kafka.inbound.group-id:coownership-service}"
     )
     public void onBookingConfirmed(String rawMessage) {
-        BookingConfirmedEvent event = parse(rawMessage, BookingConfirmedEvent.class);
+        BookingConfirmedEvent event = parseOrSkip(rawMessage, BookingConfirmedEvent.class);
+        if (event == null) {
+            return;
+        }
         idempotencyService.executeOnce(event.eventId(), CONSUMER_BOOKING_CONFIRMED, () ->
                 periodLifecycleService.applyBookingConfirmed(
                         event.rentalListingId(),
@@ -59,11 +68,12 @@ public class CoownershipInboundKafkaConsumer {
         );
     }
 
-    private <T> T parse(String rawMessage, Class<T> type) {
+    private <T> T parseOrSkip(String rawMessage, Class<T> type) {
         try {
             return objectMapper.readValue(rawMessage, type);
         } catch (Exception ex) {
-            throw new IllegalArgumentException("Некорректный формат входящего Kafka-события", ex);
+            log.error("Skipping malformed Kafka event for {}: {}", type.getSimpleName(), ex.getMessage());
+            return null;
         }
     }
 

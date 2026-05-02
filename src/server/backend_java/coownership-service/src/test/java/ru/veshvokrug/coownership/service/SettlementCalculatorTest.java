@@ -59,4 +59,31 @@ class SettlementCalculatorTest {
         assertThat(result.get(1).ownerId()).isEqualTo(owner2);
         assertThat(result.get(1).amount()).isEqualByComparingTo("100.00");
     }
+
+    @Test
+    void shouldPreserveTotalIncomeAfterRounding() {
+        UUID owner1 = UUID.randomUUID();
+        UUID owner2 = UUID.randomUUID();
+        UUID owner3 = UUID.randomUUID();
+        Map<UUID, Long> bookedSlots = new LinkedHashMap<>();
+        bookedSlots.put(owner1, 1L);
+        bookedSlots.put(owner2, 1L);
+        bookedSlots.put(owner3, 1L);
+
+        List<SettlementCalculator.SettlementLine> result = calculator.calculate(
+                new BigDecimal("100.00"),
+                bookedSlots
+        );
+
+        assertThat(result).hasSize(3);
+        assertThat(result).extracting(SettlementCalculator.SettlementLine::amount)
+                .containsExactly(
+                        new BigDecimal("33.33"),
+                        new BigDecimal("33.33"),
+                        new BigDecimal("33.34")
+                );
+        assertThat(result.stream().map(SettlementCalculator.SettlementLine::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add))
+                .isEqualByComparingTo("100.00");
+    }
 }

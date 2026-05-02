@@ -125,6 +125,55 @@ class PeriodLifecycleServiceTest {
     }
 
     @Test
+    void applyBookingConfirmedCountsOnlySlotsInsideCurrentPeriod() {
+        UUID rentalListingId = UUID.randomUUID();
+
+        CoownershipListing listing = new CoownershipListing();
+        listing.setId(UUID.randomUUID());
+        listing.setOwnerId(UUID.randomUUID());
+
+        Period activePeriod = new Period();
+        activePeriod.setId(UUID.randomUUID());
+        activePeriod.setCoownershipListing(listing);
+        activePeriod.setRentalListingId(rentalListingId);
+        activePeriod.setStartDate(LocalDate.of(2026, 4, 1));
+        activePeriod.setEndDate(LocalDate.of(2026, 4, 30));
+        activePeriod.setStatus(PeriodStatus.ACTIVE);
+        activePeriod.setTotalIncome(new BigDecimal("200.00"));
+
+        OwnershipSlot first = new OwnershipSlot();
+        first.setId(UUID.randomUUID());
+        first.setStatus(OwnershipSlotStatus.FOR_RENT);
+        OwnershipSlot second = new OwnershipSlot();
+        second.setId(UUID.randomUUID());
+        second.setStatus(OwnershipSlotStatus.FOR_RENT);
+        OwnershipSlot third = new OwnershipSlot();
+        third.setId(UUID.randomUUID());
+        third.setStatus(OwnershipSlotStatus.FOR_RENT);
+
+        when(periodRepository.findByRentalListingIdAndStatus(rentalListingId, PeriodStatus.ACTIVE))
+                .thenReturn(Optional.of(activePeriod));
+        when(ownershipSlotsRepository.findByPeriod_IdAndDateBetweenOrderByDateAsc(
+                activePeriod.getId(),
+                LocalDate.of(2026, 3, 30),
+                LocalDate.of(2026, 4, 3)))
+                .thenReturn(List.of(first, second, third));
+        when(periodRepository.save(any(Period.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.applyBookingConfirmed(
+                rentalListingId,
+                LocalDate.of(2026, 3, 30),
+                LocalDate.of(2026, 4, 3),
+                new BigDecimal("100.00")
+        );
+
+        assertThat(activePeriod.getTotalIncome()).isEqualByComparingTo("260.00");
+        verify(ownershipSlotsRepository).saveAll(List.of(first, second, third));
+        verify(periodRepository).save(activePeriod);
+    }
+
+    @Test
     void settleFinishedPeriodsWithoutBookedSlotsSettlesPeriodAndCreatesNextOneWithoutSettlementEvent() {
         UUID listingId = UUID.randomUUID();
         UUID rentalListingId = UUID.randomUUID();
@@ -207,7 +256,8 @@ class PeriodLifecycleServiceTest {
                 .thenReturn(List.of(activePeriod));
 
         // prepare projection instance for booked slots count
-        OwnershipSlotsRepository.BookedSlotsByOwnerProjection proj = new OwnershipSlotsRepository.BookedSlotsByOwnerProjection() {
+        OwnershipSlotsRepository.BookedSlotsByOwnerProjection proj =
+                new OwnershipSlotsRepository.BookedSlotsByOwnerProjection() {
             @Override
             public UUID getOwnerId() {
                 return ownerId;

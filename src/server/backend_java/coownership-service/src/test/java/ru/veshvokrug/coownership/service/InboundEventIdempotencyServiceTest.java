@@ -14,6 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -21,12 +22,16 @@ class InboundEventIdempotencyServiceTest {
     @Mock
     private ProcessedEventRepository processedEventRepository;
 
+    @Mock
+    private TransactionalLockService transactionalLockService;
+
     private InboundEventIdempotencyService service;
 
     @BeforeEach
     void setUp() {
         service = new InboundEventIdempotencyService(
                 processedEventRepository,
+                transactionalLockService,
                 Clock.fixed(Instant.parse("2026-04-27T00:00:00Z"), ZoneOffset.UTC)
         );
     }
@@ -40,6 +45,7 @@ class InboundEventIdempotencyServiceTest {
         Runnable action = mock(Runnable.class);
         service.executeOnce(eventId, "consumer", action);
 
+        verify(transactionalLockService).lock(eq("processed-event:consumer:" + eventId));
         verify(action, never()).run();
         verify(processedEventRepository, never()).saveAndFlush(any());
     }
@@ -53,6 +59,7 @@ class InboundEventIdempotencyServiceTest {
         AtomicInteger calls = new AtomicInteger();
         service.executeOnce(eventId, "consumer", calls::incrementAndGet);
 
+        verify(transactionalLockService).lock(eq("processed-event:consumer:" + eventId));
         verify(processedEventRepository).saveAndFlush(any());
         verify(processedEventRepository).existsByEventIdAndConsumerName(eventId, "consumer");
         org.assertj.core.api.Assertions.assertThat(calls.get()).isEqualTo(1);

@@ -53,8 +53,6 @@ Kafka key при отправке равен `eventId`. Это удобно дл
 - `SHARE_APPLICATION_APPROVED`
 - `SHARE_APPLICATION_REJECTED`
 - `COOWNERSHIP_FILLED_OUT`
-- `SLOT_OWNERSHIP_CHANGED`
-- `SLOT_REASSIGNED`
 - `PERIOD_SETTLEMENT_READY`
 
 ## Поведение relay
@@ -81,6 +79,7 @@ Kafka key при отправке равен `eventId`. Это удобно дл
 2. Дедуплицировать обработку по `eventId`.
 3. Не полагаться на отсутствие дублей на уровне брокера.
 4. `payload` нужно читать как JSON-объект, а не как плоский набор полей envelope.
+5. Не ожидать событий `SLOT_OWNERSHIP_CHANGED` и `SLOT_REASSIGNED`: в текущей версии сервиса они не публикуются.
 
 ## Тесты
 - `src/test/java/ru/veshvokrug/coownership/service/outbox/OutboxRelayServiceTest.java`

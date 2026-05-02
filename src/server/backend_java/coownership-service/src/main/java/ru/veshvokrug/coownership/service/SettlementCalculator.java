@@ -33,12 +33,22 @@ public class SettlementCalculator {
 			return List.of();
 		}
 
-		List<SettlementLine> lines = new ArrayList<>(bookedSlotsByOwner.size());
-		for (Map.Entry<UUID, Long> entry : bookedSlotsByOwner.entrySet()) {
-			BigDecimal ownerBooked = BigDecimal.valueOf(entry.getValue());
-			BigDecimal amount = totalIncome
-					.multiply(ownerBooked)
-					.divide(BigDecimal.valueOf(totalBookedSlots), 2, RoundingMode.HALF_UP);
+		BigDecimal normalizedIncome = totalIncome.setScale(2, RoundingMode.HALF_UP);
+		List<Map.Entry<UUID, Long>> owners = new ArrayList<>(bookedSlotsByOwner.entrySet());
+		List<SettlementLine> lines = new ArrayList<>(owners.size());
+		BigDecimal allocated = BigDecimal.ZERO;
+		for (int i = 0; i < owners.size(); i++) {
+			Map.Entry<UUID, Long> entry = owners.get(i);
+			BigDecimal amount;
+			if (i == owners.size() - 1) {
+				amount = normalizedIncome.subtract(allocated).setScale(2, RoundingMode.HALF_UP);
+			} else {
+				BigDecimal ownerBooked = BigDecimal.valueOf(entry.getValue());
+				amount = normalizedIncome
+						.multiply(ownerBooked)
+						.divide(BigDecimal.valueOf(totalBookedSlots), 2, RoundingMode.HALF_UP);
+				allocated = allocated.add(amount);
+			}
 			lines.add(new SettlementLine(entry.getKey(), entry.getValue(), amount));
 		}
 		return lines;

@@ -35,6 +35,7 @@ public class ListingService {
     private final ShareApplicationNotificationService notificationService;
     private final ShareApplicationValidator shareApplicationValidator;
     private final PeriodLifecycleService periodLifecycleService;
+    private final TransactionalLockService transactionalLockService;
     private final Clock clock;
 
     public ListingService(CoownershipListingRepository coownershipListingRepository,
@@ -44,6 +45,7 @@ public class ListingService {
                           ShareApplicationNotificationService notificationService,
                           ShareApplicationValidator shareApplicationValidator,
                           PeriodLifecycleService periodLifecycleService,
+                          TransactionalLockService transactionalLockService,
                           Clock clock) {
         this.coownershipListingRepository = coownershipListingRepository;
         this.ownershipShareRepository = ownershipShareRepository;
@@ -52,12 +54,14 @@ public class ListingService {
         this.notificationService = notificationService;
         this.shareApplicationValidator = shareApplicationValidator;
         this.periodLifecycleService = periodLifecycleService;
+        this.transactionalLockService = transactionalLockService;
         this.clock = clock;
     }
 
     @Transactional
     public CoownershipListing createListing(CoownershipListingCreateRequestDto createRequestDto) {
         validateTotalShares(createRequestDto.totalShares());
+        transactionalLockService.lock("coownership-listing:" + createRequestDto.catalogListingId());
 
         CoownershipListing existingListing = coownershipListingRepository
                 .findByCatalogListingId(createRequestDto.catalogListingId())
@@ -156,7 +160,7 @@ public class ListingService {
             ShareApplicationCreateRequestDto requestDto) {
         validateSharesCount(requestDto.sharesCount());
 
-        CoownershipListing listing = coownershipListingRepository.findWithLockingById(listingId)
+        CoownershipListing listing = coownershipListingRepository.findWithWriteLockingById(listingId)
                 .orElseThrow(() -> ServiceException.notFound("Листинг не найден"));
 
         if (listing.getStatus() != CoownershipStatus.OPEN) {

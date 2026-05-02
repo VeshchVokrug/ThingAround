@@ -22,15 +22,20 @@ public class InboundEventIdempotencyService {
 	private static final Logger log = LoggerFactory.getLogger(InboundEventIdempotencyService.class);
 
 	private final ProcessedEventRepository processedEventRepository;
+	private final TransactionalLockService transactionalLockService;
 	private final Clock clock;
 
-	public InboundEventIdempotencyService(ProcessedEventRepository processedEventRepository, Clock clock) {
+	public InboundEventIdempotencyService(ProcessedEventRepository processedEventRepository,
+									  TransactionalLockService transactionalLockService,
+									  Clock clock) {
 		this.processedEventRepository = processedEventRepository;
+		this.transactionalLockService = transactionalLockService;
 		this.clock = clock;
 	}
 
 	@Transactional
 	public void executeOnce(UUID eventId, String consumerName, Runnable action) {
+		transactionalLockService.lock("processed-event:" + consumerName + ':' + eventId);
 		if (processedEventRepository.existsByEventIdAndConsumerName(eventId, consumerName)) {
 			return;
 		}

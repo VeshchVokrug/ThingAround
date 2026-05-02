@@ -13,9 +13,11 @@ import ru.veshvokrug.coownership.output.repository.OwnershipSlotsRepository;
 import ru.veshvokrug.coownership.output.repository.PeriodRepository;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 /**
@@ -102,13 +104,27 @@ public class PeriodLifecycleService {
 				.ifPresent(period -> {
 					List<OwnershipSlot> slots = ownershipSlotsRepository
 							.findByPeriod_IdAndDateBetweenOrderByDateAsc(period.getId(), startDate, endDate);
+					if (slots.isEmpty()) {
+						return;
+					}
+
+					long bookingDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
+					if (bookingDays <= 0) {
+						return;
+					}
+
 					for (OwnershipSlot slot : slots) {
 						slot.setStatus(OwnershipSlotStatus.BOOKED);
 					}
 					ownershipSlotsRepository.saveAll(slots);
 
 					BigDecimal safePrice = totalPrice == null ? BigDecimal.ZERO : totalPrice;
-					period.setTotalIncome(period.getTotalIncome().add(safePrice));
+					BigDecimal normalizedPrice = safePrice.setScale(2, RoundingMode.HALF_UP);
+
+					BigDecimal bookedPrice = normalizedPrice
+							.multiply(BigDecimal.valueOf(slots.size()))
+							.divide(BigDecimal.valueOf(bookingDays), 2, RoundingMode.HALF_UP);
+					period.setTotalIncome(period.getTotalIncome().add(bookedPrice));
 					periodRepository.save(period);
 				});
 	}

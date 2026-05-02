@@ -58,6 +58,9 @@ class ListingServiceTest {
     @Mock
     private PeriodLifecycleService periodLifecycleService;
 
+    @Mock
+    private TransactionalLockService transactionalLockService;
+
     private ListingService newService(Clock clock) {
         return new ListingService(
                 coownershipListingRepository,
@@ -67,6 +70,7 @@ class ListingServiceTest {
                 notificationService,
                 shareApplicationValidator,
                 periodLifecycleService,
+                transactionalLockService,
                 clock
         );
     }
@@ -208,6 +212,7 @@ class ListingServiceTest {
         assertThat(result.getOwnerId()).isEqualTo(ownerId);
         assertThat(result.getTotalShares()).isEqualTo(8);
         assertThat(result.getFundingDeadline()).isEqualTo(LocalDate.of(2026, 7, 18));
+        verify(transactionalLockService).lock(eq("coownership-listing:" + catalogListingId));
         verify(ownershipShareRepository).saveAll(anyList());
     }
 
@@ -235,6 +240,7 @@ class ListingServiceTest {
         CoownershipListing result = service.createListing(request);
 
         assertThat(result).isEqualTo(existing);
+        verify(transactionalLockService).lock(eq("coownership-listing:" + catalogListingId));
         verify(coownershipListingRepository, never()).save(any(CoownershipListing.class));
         verify(ownershipShareRepository, never()).saveAll(anyList());
     }
@@ -251,7 +257,7 @@ class ListingServiceTest {
         CoownershipListing listing = new CoownershipListing();
         listing.setId(listingId);
         listing.setOwnerId(ownerId);
-        when(coownershipListingRepository.findWithLockingById(listingId)).thenReturn(Optional.of(listing));
+        when(coownershipListingRepository.findWithWriteLockingById(listingId)).thenReturn(Optional.of(listing));
         when(shareApplicationRepository
                 .findByListing_IdAndApplicantId(listingId, applicantId))
                 .thenReturn(Optional.empty());
@@ -269,6 +275,7 @@ class ListingServiceTest {
         assertThat(result.getStatus()).isEqualTo(ShareApplicationStatus.PENDING);
         assertThat(result.getSharesCount()).isEqualTo(3);
         assertThat(result.getApplicantId()).isEqualTo(applicantId);
+        verify(coownershipListingRepository).findWithWriteLockingById(listingId);
         verify(notificationService, times(1))
                 .createNotification(eq(ownerId),
                         any(ShareApplication.class),
@@ -291,7 +298,7 @@ class ListingServiceTest {
         CoownershipListing listing = new CoownershipListing();
         listing.setId(listingId);
         listing.setOwnerId(ownerId);
-        when(coownershipListingRepository.findWithLockingById(listingId)).thenReturn(Optional.of(listing));
+        when(coownershipListingRepository.findWithWriteLockingById(listingId)).thenReturn(Optional.of(listing));
         when(shareApplicationRepository
                 .findByListing_IdAndApplicantId(listingId, applicantId))
                 .thenReturn(Optional.empty());
@@ -314,7 +321,7 @@ class ListingServiceTest {
         listing.setId(listingId);
         listing.setOwnerId(ownerId);
 
-        when(coownershipListingRepository.findWithLockingById(listingId)).thenReturn(Optional.of(listing));
+        when(coownershipListingRepository.findWithWriteLockingById(listingId)).thenReturn(Optional.of(listing));
 
         assertThatThrownBy(() -> service
                 .createShareApplication(listingId,

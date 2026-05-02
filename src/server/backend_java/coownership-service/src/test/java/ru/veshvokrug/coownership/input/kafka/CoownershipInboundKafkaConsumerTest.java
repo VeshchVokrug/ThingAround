@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -99,9 +99,7 @@ class CoownershipInboundKafkaConsumerTest {
                 periodLifecycleService
         );
 
-        assertThatThrownBy(() -> consumer.onBookingConfirmed("not-json"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Некорректный формат входящего Kafka-события");
+        assertThatCode(() -> consumer.onBookingConfirmed("not-json")).doesNotThrowAnyException();
 
         verify(idempotencyService, never()).executeOnce(any(UUID.class), anyString(), any(Runnable.class));
         verify(periodLifecycleService,
