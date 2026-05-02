@@ -36,7 +36,6 @@ class NotificationPurgeSchedulerTest {
     void purgeExpiredNotificationsHandlesExceptionsGracefully() {
         when(notificationService.purgeExpiredNotifications()).thenThrow(new RuntimeException("DB error"));
 
-        // Should not throw, just log
         scheduler.purgeExpiredNotifications();
 
         verify(notificationService).purgeExpiredNotifications();

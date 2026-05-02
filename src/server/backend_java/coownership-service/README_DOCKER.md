@@ -1,28 +1,26 @@
-# CoOwnership Service - Docker Setup
-## ⚡ Запуск за 30 секунд
+# Coownership Service (Docker)
+
+Сервис работает в общей инфраструктуре (`db`, `kafka`, `gateway`) и отдает gRPC API для gateway/других сервисов.
+
+## Быстрый запуск
 ```bash
+docker network create thingaround-network || true
 make up
 ```
-## 🔌 Адреса
-- **API:** http://localhost:6767/api/v1/co-ownership
-- **Swagger:** http://localhost:6767/api/v1/co-ownership/swagger-ui.html
-- **БД:** localhost:5432 (admin/admin)
-## 📋 Основные команды
+
+## Порты
+- gRPC: `localhost:9091`
+
+## Переменные окружения
+- `COOWNERSHIP_DB_NAME` (default: `postgres`)
+- `COOWNERSHIP_DB_USER` (default: `admin`)
+- `COOWNERSHIP_DB_PASSWORD` (default: `admin`)
+- `COOWNERSHIP_KAFKA_BOOTSTRAP_SERVERS` (default: `kafka:9092`)
+
+## Команды
 ```bash
-make up        # Запустить
-make down      # Остановить
-make logs      # Логи сервиса
-make ps        # Статус
-make shell-db  # Подключиться к БД
-make help      # Все команды
+make up
+make down
+make logs
+make ps
 ```
-## 📦 Что запускается
-- PostgreSQL 17
-- Java REST API (6767)
-## 🐛 Проблемы?
-```bash
-make restart   # Перезапустить
-make rebuild   # Пересобрать
-```
----
-Готово! Фронтенд подключайся на `http://localhost:6767/api/v1/co-ownership`

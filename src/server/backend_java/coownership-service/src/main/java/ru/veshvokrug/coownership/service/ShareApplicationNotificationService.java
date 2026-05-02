@@ -22,6 +22,8 @@ import java.util.UUID;
  * - Архивирование (удаление) старых уведомлений
  * <p>
  * Построение объекта уведомления делегируется ShareApplicationNotificationBuilder.
+ *
+ * @author Dmitrii Marchenko 27.04.2026
  */
 @Service
 public class ShareApplicationNotificationService {
@@ -58,7 +60,6 @@ public class ShareApplicationNotificationService {
         Instant now = Instant.now(clock);
         Instant expiresAt = now.plus(RETENTION);
 
-        // Delegate to builder for object construction
         ShareApplicationNotification notification = notificationBuilder.build(
                 recipientId,
                 application,

@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>
  * Интервалы настраиваются через `coownership.notification.purge-interval-ms`
  * и `coownership.notification.purge-initial-delay-ms`.
+ *
+ * @author Dmitrii Marchenko 27.04.2026
  */
 @Component
 public class NotificationPurgeScheduler {

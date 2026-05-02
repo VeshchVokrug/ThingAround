@@ -12,6 +12,8 @@ import java.util.UUID;
  * <p>
  * Отвечает за конструирование объекта уведомления из заявки и конфигурации.
  * Разделяет ответственность: сервис управляет lifecycle, builder строит объект.
+ *
+ * @author Dmitrii Marchenko 27.04.2026
  */
 @Component
 public class ShareApplicationNotificationBuilder {

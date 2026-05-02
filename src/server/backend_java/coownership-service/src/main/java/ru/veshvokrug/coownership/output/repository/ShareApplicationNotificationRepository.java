@@ -8,14 +8,16 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Репозиторий уведомлений о заявках для owner polling.
+ *
+ * @author Dmitrii Marchenko 27.04.2026
+ */
 public interface ShareApplicationNotificationRepository extends JpaRepository<ShareApplicationNotification, UUID> {
     List<ShareApplicationNotification> findTop100ByRecipientIdAndExpiresAtAfterOrderByCreatedAtDesc(
             UUID recipientId,
             Instant expiresAt
     );
-
-    @Modifying
-    long deleteByExpiresAtBefore(Instant cutoff);
 
     @Modifying
     long deleteByCreatedAtBefore(Instant cutoff);

@@ -42,7 +42,6 @@ class ShareApplicationNotificationServiceTest {
     private static final Instant FIXED_NOW = Instant.parse("2026-04-20T10:00:00Z");
     private static final Instant NOTIFICATION_EXPIRES = Instant.parse("2026-04-27T10:00:00Z");
     private static final int STORAGE_RETENTION_DAYS = 30;
-    private static final int RETENTION_DAYS = 7;
 
     @Mock
     private ShareApplicationNotificationRepository notificationRepository;
@@ -67,10 +66,8 @@ class ShareApplicationNotificationServiceTest {
         when(notificationRepository.save(builtNotification))
                 .thenReturn(builtNotification);
 
-        // Act
         ShareApplicationNotification result = service.createNotification(recipientId, application, eventType);
 
-        // Verify
         assertThat(result)
                 .isEqualTo(builtNotification)
                 .hasFieldOrPropertyWithValue("eventType", eventType)
@@ -94,10 +91,8 @@ class ShareApplicationNotificationServiceTest {
                 eq(FIXED_NOW)
         )).thenReturn(List.of(active));
 
-        // Act
         List<ShareApplicationNotification> notifications = service.getNotifications(active.getRecipientId());
 
-        // Verify
         assertThat(notifications)
                 .hasSize(1)
                 .contains(active);
@@ -112,10 +107,8 @@ class ShareApplicationNotificationServiceTest {
         Instant expectedCutoff = FIXED_NOW.minusSeconds((long) retentionDays * 86400);
         when(notificationRepository.deleteByCreatedAtBefore(expectedCutoff)).thenReturn(5L);
 
-        // Act
         long purged = service.purgeExpiredNotifications();
 
-        // Verify
         assertThat(purged).isEqualTo(5L);
         verify(notificationRepository).deleteByCreatedAtBefore(expectedCutoff);
     }
@@ -127,10 +120,8 @@ class ShareApplicationNotificationServiceTest {
 
         when(notificationRepository.deleteByCreatedAtBefore(any())).thenReturn(0L);
 
-        // Act
         long purged = service.purgeExpiredNotifications();
 
-        // Verify
         assertThat(purged).isZero();
     }
 
@@ -145,14 +136,11 @@ class ShareApplicationNotificationServiceTest {
                 eq(FIXED_NOW)
         )).thenReturn(List.of());
 
-        // Act
         List<ShareApplicationNotification> notifications = service.getNotifications(recipientId);
 
-        // Verify
         assertThat(notifications).isEmpty();
     }
 
-    // ========== Test Builders ==========
 
     private ShareApplication buildShareApplication() {
         ShareApplication application = new ShareApplication();
@@ -169,8 +157,6 @@ class ShareApplicationNotificationServiceTest {
         listing.setId(UUID.randomUUID());
         listing.setOwnerId(UUID.randomUUID());
         listing.setCatalogListingId(UUID.randomUUID());
-        listing.setName("Test Listing");
-        listing.setDescription("Test Description");
         listing.setPrice(new BigDecimal("150000.00"));
         listing.setTotalShares(4);
         listing.setFundingDeadline(LocalDate.now(ZoneOffset.UTC).plusDays(45));

@@ -1,58 +1,25 @@
-version: '3.9'
-
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:17-alpine
-    container_name: coownership-postgres
-    environment:
-      POSTGRES_DB: coownership
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - coownership-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d coownership"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # CoOwnership Service
   coownership-service:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: coownership-service
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/coownership
-      SPRING_DATASOURCE_USERNAME: admin
-      SPRING_DATASOURCE_PASSWORD: admin
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${COOWNERSHIP_DB_NAME:-postgres}
+      SPRING_DATASOURCE_USERNAME: ${COOWNERSHIP_DB_USER:-admin}
+      SPRING_DATASOURCE_PASSWORD: ${COOWNERSHIP_DB_PASSWORD:-admin}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${COOWNERSHIP_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      GRPC_SERVER_PORT: ${COOWNERSHIP_GRPC_PORT:-9091}
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JAVA_OPTS: "-Xms256m -Xmx512m"
       TZ: UTC
     ports:
-      - "6767:6767"
+      - "9091:9091"
     networks:
-      - coownership-network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:6767/api/v1/co-ownership/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 40s
+      - thingaround-network
     restart: on-failure
 
 networks:
-  coownership-network:
+  thingaround-network:
+    external: true
     driver: bridge
-
-volumes:
-  postgres_data:
-

@@ -17,6 +17,10 @@ import java.util.UUID;
 public interface OwnershipShareRepository extends JpaRepository<OwnershipShare, UUID> {
 	long countByCoownershipListing_IdAndOwnerIdIsNull(UUID coownershipListingId);
 
+	List<OwnershipShare> findByCoownershipListing_Id(UUID coownershipListingId);
+
+	List<OwnershipShare> findByCoownershipListing_IdAndOwnerIdIsNotNullOrderByIdAsc(UUID coownershipListingId);
+
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("""
 			select s from OwnershipShare s

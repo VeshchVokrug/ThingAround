@@ -30,13 +30,11 @@ class ShareApplicationNotificationBuilderTest {
 
     @Test
     void buildCreatesNotificationWithAllFieldsMapped() {
-        // Arrange
         UUID recipientId = UUID.randomUUID();
         ShareApplication application = buildShareApplication();
         String eventType = "SHARE_APPLICATION_APPROVED";
         Instant expiresAt = Instant.now().plusSeconds(604800); // +7 days
 
-        // Act
         ShareApplicationNotification notification = builder.build(
                 recipientId,
                 application,
@@ -44,7 +42,6 @@ class ShareApplicationNotificationBuilderTest {
                 expiresAt
         );
 
-        // Verify all fields are mapped correctly
         assertThat(notification)
                 .hasFieldOrPropertyWithValue("recipientId", recipientId)
                 .hasFieldOrPropertyWithValue("applicationId", application.getId())
@@ -66,7 +63,6 @@ class ShareApplicationNotificationBuilderTest {
         };
 
         for (String eventType : eventTypes) {
-            // Act
             ShareApplicationNotification notification = builder.build(
                     UUID.randomUUID(),
                     buildShareApplication(),
@@ -74,12 +70,10 @@ class ShareApplicationNotificationBuilderTest {
                     Instant.now()
             );
 
-            // Verify
             assertThat(notification.getEventType()).isEqualTo(eventType);
         }
     }
 
-    // ========== Test Builders ==========
 
     private ShareApplication buildShareApplication() {
         ShareApplication application = new ShareApplication();
@@ -96,8 +90,6 @@ class ShareApplicationNotificationBuilderTest {
         listing.setId(UUID.randomUUID());
         listing.setOwnerId(UUID.randomUUID());
         listing.setCatalogListingId(UUID.randomUUID());
-        listing.setName("Test Listing");
-        listing.setDescription("Test Description");
         listing.setPrice(new BigDecimal("150000.00"));
         listing.setTotalShares(4);
         listing.setFundingDeadline(LocalDate.now(ZoneOffset.UTC).plusDays(45));

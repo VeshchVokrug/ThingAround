@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package coownership.v1;
+
+option java_multiple_files = true;
+option java_package = "ru.veshvokrug.coownership.grpc";
+option java_outer_classname = "CoownershipProto";
+
+import "google/protobuf/timestamp.proto";
+
+service CoownershipService {
+  rpc CreateListing(CreateListingRequest) returns (CreateListingResponse);
+  rpc CreateShareApplication(CreateShareApplicationRequest) returns (ShareApplicationResponse);
+  rpc ApproveShareApplication(OwnerActionRequest) returns (ShareApplicationResponse);
+  rpc RejectShareApplication(OwnerActionRequest) returns (ShareApplicationResponse);
+  rpc GetOwnerNotifications(GetOwnerNotificationsRequest) returns (GetOwnerNotificationsResponse);
+}
+
+message CreateListingRequest {
+  reserved 1, 2;
+  reserved "name", "description";
+  string catalog_listing_id = 3;
+  string price = 4;
+  string owner_id = 5;
+  int32 total_shares = 6;
+  string funding_deadline = 7; // yyyy-MM-dd, optional
+}
+
+message CreateListingResponse {
+  string listing_id = 1;
+}
+
+message CreateShareApplicationRequest {
+  string listing_id = 1;
+  string applicant_id = 2;
+  int32 shares_count = 3;
+}
+
+message OwnerActionRequest {
+  string application_id = 1;
+  string owner_id = 2;
+}
+
+message ShareApplicationResponse {
+  string id = 1;
+  string listing_id = 2;
+  string applicant_id = 3;
+  int32 shares_count = 4;
+  string status = 5;
+}
+
+message GetOwnerNotificationsRequest {
+  string owner_id = 1;
+}
+
+message GetOwnerNotificationsResponse {
+  repeated ShareApplicationNotification notifications = 1;
+}
+
+message ShareApplicationNotification {
+  string id = 1;
+  string recipient_id = 2;
+  string application_id = 3;
+  string listing_id = 4;
+  string owner_id = 5;
+  string applicant_id = 6;
+  int32 shares_count = 7;
+  string application_status = 8;
+  string event_type = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp expires_at = 11;
+}
+

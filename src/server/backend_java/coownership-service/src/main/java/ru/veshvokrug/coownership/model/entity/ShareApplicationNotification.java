@@ -11,6 +11,8 @@ import java.util.UUID;
  * Уведомление для polling по заявкам на доли.
  * Хранится отдельно от заявок, чтобы frontend мог опрашивать легкую read-модель
  * и не читать всю бизнес-сущность каждый раз.
+ *
+ * @author Dmitrii Marchenko 25.04.2026
  */
 @Entity
 @Table(name = "share_application_notifications", indexes = {

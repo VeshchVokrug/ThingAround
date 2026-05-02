@@ -12,6 +12,8 @@ import java.util.UUID;
 
 /**
  * Output-адаптер публикации доменных событий в outbox.
+ *
+ * @author Dmitrii Marchenko 25.04.2026
  */
 @Component
 public class OutboxShareApplicationEventPublisher implements ShareApplicationEventPublisher {

@@ -51,11 +51,19 @@ class ListingServiceIntegrationTest extends PostgresTestcontainersSupport {
     @Autowired
     private ShareApplicationNotificationRepository notificationRepository;
 
+    @Autowired
+    private OwnershipSlotsRepository ownershipSlotsRepository;
+
+    @Autowired
+    private PeriodRepository periodRepository;
+
     @BeforeEach
     void cleanDatabase() {
         notificationRepository.deleteAllInBatch();
         outboxMessageRepository.deleteAllInBatch();
         shareApplicationRepository.deleteAllInBatch();
+        ownershipSlotsRepository.deleteAllInBatch();
+        periodRepository.deleteAllInBatch();
         ownershipShareRepository.deleteAllInBatch();
         coownershipListingRepository.deleteAllInBatch();
     }
@@ -67,8 +75,6 @@ class ListingServiceIntegrationTest extends PostgresTestcontainersSupport {
         LocalDate deadline = LocalDate.now(ZoneOffset.UTC).plusDays(45);
 
         CoownershipListingCreateRequestDto request = new CoownershipListingCreateRequestDto(
-                "Дом у моря",
-                "Коттедж с участком",
                 catalogListingId,
                 new BigDecimal("150000.00"),
                 ownerId,
@@ -158,7 +164,7 @@ class ListingServiceIntegrationTest extends PostgresTestcontainersSupport {
             assertThat(assignedShares).hasSize(6);
             assertThat(ownershipShareRepository.countByCoownershipListing_IdAndOwnerIdIsNull(listing.getId())).isZero();
             assertThat(notificationRepository.count()).isEqualTo(4);
-            assertThat(outboxMessageRepository.count()).isEqualTo(4);
+            assertThat(outboxMessageRepository.count()).isEqualTo(5);
         } finally {
             executor.shutdownNow();
         }
@@ -185,8 +191,6 @@ class ListingServiceIntegrationTest extends PostgresTestcontainersSupport {
 
     private CoownershipListing createListing(int totalShares) {
         CoownershipListingCreateRequestDto request = new CoownershipListingCreateRequestDto(
-                "Дом у моря",
-                "Коттедж с участком",
                 UUID.randomUUID(),
                 new BigDecimal("150000.00"),
                 UUID.randomUUID(),

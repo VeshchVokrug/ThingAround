@@ -1,9 +1,9 @@
-.PHONY: help up down restart logs logs-service ps shell-db
+.PHONY: help up down restart logs logs-service ps rebuild clean
 
 help: ## Справка
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-20s %s\n", $$1, $$2}'
 
-up: ## Запустить сервис
+up: ## Запустить сервис (ожидаются db/kafka в общей сети thingaround-network)
 	docker-compose up -d
 	@sleep 3 && docker-compose ps
 
@@ -25,13 +25,9 @@ logs-service: ## Логи сервиса
 ps: ## Статус контейнеров
 	@docker-compose ps
 	@echo ""
-	@curl -s http://localhost:6767/api/v1/co-ownership/actuator/health | jq '.status' 2>/dev/null || echo "Сервис не готов"
-
-shell-db: ## Подключиться к БД
-	docker exec -it coownership-postgres psql -U admin -d coownership
+	@echo "gRPC: localhost:9091"
 
 clean: ## Удалить всё (DATA LOSS!)
 	docker-compose down -v
 
 .DEFAULT_GOAL := help
-

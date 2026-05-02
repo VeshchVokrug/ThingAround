@@ -2,10 +2,12 @@ spring:
   application:
     name: coownership-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/postgres
-    username: admin
-    password: admin
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:admin}
     driver-class-name: org.postgresql.Driver
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
   jpa:
     show-sql: false  # true только при отладке локально
     hibernate:
@@ -29,7 +31,22 @@ coownership:
     purge-interval-ms: 3600000  # 1 hour in milliseconds
     purge-initial-delay-ms: 60000  # 1 minute initial delay
     storage-retention-days: 30  # Delete notifications older than 30 days
-server:
-  port: 6767
-  servlet:
-    context-path: /api/v1/co-ownership
+  kafka:
+    inbound:
+      group-id: ${COOWNERSHIP_KAFKA_GROUP_ID:coownership-service}
+      rental-listing-created-topic: ${COOWNERSHIP_KAFKA_RENTAL_LISTING_CREATED_TOPIC:rental-listing-created}
+      booking-confirmed-topic: ${COOWNERSHIP_KAFKA_BOOKING_CONFIRMED_TOPIC:booking-confirmed}
+    outbox:
+      topic: ${COOWNERSHIP_KAFKA_OUTBOX_TOPIC:coownership-events}
+  outbox:
+    relay-interval-ms: ${COOWNERSHIP_OUTBOX_RELAY_INTERVAL_MS:5000}
+    batch-size: ${COOWNERSHIP_OUTBOX_BATCH_SIZE:100}
+    retry-delay-seconds: ${COOWNERSHIP_OUTBOX_RETRY_DELAY_SECONDS:30}
+  period:
+    settlement:
+      cron: ${COOWNERSHIP_PERIOD_SETTLEMENT_CRON:0 0 2 * * *}
+
+grpc:
+  server:
+    enabled: ${GRPC_SERVER_ENABLED:true}
+    port: ${GRPC_SERVER_PORT:9091}
