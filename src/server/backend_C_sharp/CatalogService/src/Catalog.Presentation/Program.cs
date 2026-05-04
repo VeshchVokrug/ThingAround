@@ -1,7 +1,15 @@
+using Application;
+using Catalog.Contracts.Auth;
 using Core.Caching;
 using Infrastructure.Initializer;
 using Infrastructure.Persistence;
+using Infrastructure;
+using Infrastructure.Auth;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Presentation.gRPC;
+using Presentation.Interceptors;
+using Presentation.Validators;
 using Serilog;
 using Serilog.Enrichers.Span;
 using Serilog.Events;
@@ -19,11 +27,14 @@ public class Program
         builder.Host.UseSerilog();
         
         ConfigureInfrastructure(builder.Services, builder.Configuration);
+        ConfigureServices(builder.Services);
         
         var app = builder.Build();
         
         await DbInitializer.InitializeAsync(app.Services);
         
+        app.MapGrpcService<GrpcCatalogService>();
+
         await app.RunAsync();
     }
     
@@ -52,6 +63,23 @@ public class Program
                                        ?? throw new NullReferenceException("Connection string 'Redis' not found.");
             
             options.InstancePrefix = configuration.GetValue<string>("RedisOptions:InstancePrefix") ?? "Catalog";
+        });
+    }
+
+    private static void ConfigureServices(IServiceCollection services)
+    {
+        services.AddInfrastructure();
+        services.AddApplication();
+        services.AddSingleton(TimeProvider.System);
+        services.AddHttpContextAccessor();
+        services.AddScoped<IUserContext, UserContext>();
+
+        services.AddValidatorsFromAssemblyContaining<CalendarDateValidator>();
+        services.AddGrpc(options =>
+        {
+            options.Interceptors.Add<ExceptionInterceptor>();
+            options.Interceptors.Add<ValidationInterceptor>();
+            options.Interceptors.Add<UserHeaderInterceptor>();
         });
     }
     

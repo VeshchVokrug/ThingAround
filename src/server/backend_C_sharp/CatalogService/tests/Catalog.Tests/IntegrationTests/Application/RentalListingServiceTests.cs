@@ -239,7 +239,7 @@ public class RentalListingServiceTests
     public async Task UpdateListing_WhenAdminUpdates_PassesNullAsOwnerId()
     {
         // Arrange
-        var dto = new UpdateRentalListingDto { Id = Guid.NewGuid(), Title = "New Title", CategorySlug = Category.ArtEquip.ToString() };
+        var dto = new RentalListingDto() { Id = Guid.NewGuid(), Title = "New Title", CategorySlug = Category.ArtEquip.ToString() };
         _userContext.IsAdmin.Returns(true);
         _listingRepo.UpdateAsync(dto, null, Arg.Any<CancellationToken>()).Returns(true);
 
@@ -254,10 +254,10 @@ public class RentalListingServiceTests
     public async Task UpdateListing_WhenSuccess_DoesNotThrow()
     {
         // Arrange
-        var dto = new UpdateRentalListingDto { Id = Guid.NewGuid(), Title = "Updated title", CategorySlug = Category.ArtEquip.ToString() };
+        var dto = new RentalListingDto() { Id = Guid.NewGuid(), Title = "Updated title", CategorySlug = Category.ArtEquip.ToString() };
         _userContext.IsAdmin.Returns(false);
         _userContext.UserId.Returns(Guid.NewGuid());
-        _listingRepo.UpdateAsync(Arg.Any<UpdateRentalListingDto>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+        _listingRepo.UpdateAsync(Arg.Any<RentalListingDto>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
         // Act
@@ -648,9 +648,9 @@ public class RentalListingServiceTests
             _slugHelper);
     }
 
-    private static UpdateRentalListingDto BuildUpdateDto(RentalListingDto snapshot, List<AvailabilitySlotDto> requestedSlots)
+    private static RentalListingDto BuildUpdateDto(RentalListingDto snapshot, List<AvailabilitySlotDto> requestedSlots)
     {
-        return new UpdateRentalListingDto
+        return new RentalListingDto
         {
             Id = snapshot.Id,
             Version = snapshot.Version,
@@ -661,7 +661,7 @@ public class RentalListingServiceTests
             ImagesUrls = snapshot.ImagesUrls,
             City = snapshot.City,
             DefaultPrice = snapshot.DefaultPrice,
-            ManagerId = snapshot.OwnerId,
+            OwnerId = snapshot.OwnerId,
             OwnerRating = snapshot.OwnerRating,
             OwnerName = snapshot.OwnerName,
             OwnerPhone = snapshot.OwnerPhone,

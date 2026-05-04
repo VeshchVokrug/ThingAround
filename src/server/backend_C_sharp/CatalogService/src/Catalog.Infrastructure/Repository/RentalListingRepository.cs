@@ -187,7 +187,7 @@ public class RentalListingRepository : IRentalListingRepository
         return listingId;
     }
 
-    public async Task<bool> UpdateAsync(UpdateRentalListingDto dto, Guid? ownerId = null, CancellationToken ct = default)
+    public async Task<bool> UpdateAsync(RentalListingDto dto, Guid? ownerId = null, CancellationToken ct = default)
     {
         var query = _context.RentalListings
             .Include(x => x.Contact)
@@ -215,7 +215,7 @@ public class RentalListingRepository : IRentalListingRepository
         listing.OwnerRating = dto.OwnerRating;
         listing.Contact = new ContactInfo
         {
-            ManagerId = dto.ManagerId,
+            ManagerId = dto.OwnerId,
             PersonName = dto.OwnerName,
             PersonPhone = dto.OwnerPhone,
             SocialsUrls = dto.OwnerSocialsUrls,

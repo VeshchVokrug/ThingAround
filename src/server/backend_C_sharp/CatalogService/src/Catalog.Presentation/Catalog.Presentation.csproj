@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\..\..\Protos\Protos.csproj" />
       <ProjectReference Include="..\..\..\Core\Core.csproj" />
       <ProjectReference Include="..\Catalog.Application\Catalog.Application.csproj" />
       <ProjectReference Include="..\Catalog.Infrastructure\Catalog.Infrastructure.csproj" />
@@ -32,9 +33,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="gRPC\" />
       <Folder Include="Models\AvailabilitySlot\" />
-      <Folder Include="Validators\" />
     </ItemGroup>
     
 </Project>

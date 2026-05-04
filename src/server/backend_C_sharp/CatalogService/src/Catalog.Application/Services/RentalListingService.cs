@@ -124,13 +124,13 @@ public class RentalListingService : IRentalListingService
         await ExecuteDeactivationAsync(listingId, null, ct);
     }
 
-    public async Task UpdateListingAsync(UpdateRentalListingDto dto, CancellationToken ct = default)
+    public async Task UpdateListingAsync(RentalListingDto dto, CancellationToken ct = default)
     {
         Guid? ownerId = _userContext.IsAdmin ? null : _userContext.UserId;
 
         await using var transaction = await _rentalListingRepository.BeginTransactionAsync(ct);
 
-        var hasFullSnapshot = dto.AvailabilitySlots is { Count: > 0 };
+        var hasFullSnapshot = dto.AvailabilitySlots.Count > 0;
         dto.TitleSlug = _slugHelper.GenerateSlug(dto.Title);
         if (!hasFullSnapshot)
         {

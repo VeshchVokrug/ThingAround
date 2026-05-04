@@ -241,7 +241,7 @@ public class RentalListingRepositoryTests
         saved.CategorySlug.Should().Be(dto.CategorySlug);
         saved.City.Should().Be(dto.City);
         saved.DefaultPrice.Should().Be(dto.DefaultPrice);
-        saved.Contact.ManagerId.Should().Be(dto.ManagerId);
+        saved.Contact.ManagerId.Should().Be(dto.OwnerId);
         saved.Contact.PersonName.Should().Be(dto.OwnerName);
         saved.Contact.PersonPhone.Should().Be(dto.OwnerPhone);
         saved.OwnerRating.Should().Be(dto.OwnerRating);
@@ -555,9 +555,9 @@ public class RentalListingRepositoryTests
         await context.RentalListings.ExecuteDeleteAsync();
     }
 
-    private static UpdateRentalListingDto CreateUpdateDto(Guid listingId, int version = 1)
+    private static RentalListingDto CreateUpdateDto(Guid listingId, int version = 1)
     {
-        return new UpdateRentalListingDto
+        return new RentalListingDto()
         {
             Id = listingId,
             Version = version,
@@ -568,7 +568,7 @@ public class RentalListingRepositoryTests
             ImagesUrls = ["updated.jpg"],
             City = "Spb",
             DefaultPrice = 2300,
-            ManagerId = Guid.NewGuid(),
+            OwnerId = Guid.NewGuid(),
             OwnerRating = 4.9f,
             OwnerName = "Updated Owner",
             OwnerPhone = "89990001122",
