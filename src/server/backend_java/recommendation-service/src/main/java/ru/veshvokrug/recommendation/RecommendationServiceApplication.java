@@ -2,18 +2,19 @@ package ru.veshvokrug.recommendation;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
-import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
-import org.springframework.boot.jdbc.autoconfigure.DataSourceTransactionManagerAutoConfiguration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication(exclude = {
-		DataSourceAutoConfiguration.class,
-		DataSourceTransactionManagerAutoConfiguration.class,
-		HibernateJpaAutoConfiguration.class
-})
+/**
+ * Главный класс приложения сервиса рекомендаций.
+ * Обрабатывает события активности из Kafka и предоставляет персональные рекомендации.
+ *
+ * @author Dmitrii Marchenko
+ */
+@SpringBootApplication
+@EnableScheduling
 public class RecommendationServiceApplication {
 
-	static void main(String[] args) {
+	public static void main(String[] args) {
 		SpringApplication.run(RecommendationServiceApplication.class, args);
 	}
 
