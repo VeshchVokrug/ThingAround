@@ -145,7 +145,6 @@ public class RentalListingRepositoryTests
         var ownerId = Guid.NewGuid();
         var dto = new CreateRentalListingDto
         {
-            TitleSlug = "new-camera",
             CategorySlug = Category.Projectors.ToString(),
             Title = "New Camera",
             Description = "Mirrorless",
@@ -162,7 +161,7 @@ public class RentalListingRepositoryTests
 
         var listing = new RentalListing
         {
-            TitleSlug = dto.TitleSlug,
+            TitleSlug = "new-camera",
             CategorySlug = dto.CategorySlug,
             Title = dto.Title,
             Description = dto.Description,
@@ -198,7 +197,7 @@ public class RentalListingRepositoryTests
         saved.Should().NotBeNull();
         createdId.Should().Be(listing.Id);
         saved.Title.Should().Be(dto.Title);
-        saved.TitleSlug.Should().Be(dto.TitleSlug);
+        saved.TitleSlug.Should().Be("new-camera");
         saved.CategorySlug.Should().Be(dto.CategorySlug);
         saved.City.Should().Be(dto.City);
         saved.DefaultPrice.Should().Be(dto.DefaultPrice);
@@ -208,7 +207,7 @@ public class RentalListingRepositoryTests
         saved.Contact.PersonName.Should().Be(dto.ManagerName);
         saved.Contact.PersonPhone.Should().Be(dto.ManagerPhone);
     }
-
+    
     [Fact]
     public async Task UpdateAsync_WithOwnerFilterAndMatchingOwner_ShouldUpdateListing()
     {

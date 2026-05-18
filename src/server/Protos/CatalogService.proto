@@ -71,19 +71,18 @@ message RentalListingCard {
 }
 
 message CreateRentalListingRequest {
-  string title_slug = 1;
-  string category_slug = 2;
-  string title = 3;
-  string description = 4;
-  repeated string images_urls = 5;
-  string city = 6;
-  int32 default_price = 7;
-  string manager_id = 8;
-  float manager_rating = 9;
-  string manager_name = 10;
-  string manager_phone = 11;
-  repeated string manager_socials_urls = 12;
-  repeated CalendarDate busy_dates = 13;
+  string category_slug = 1;
+  string title = 2;
+  string description = 3;
+  repeated string images_urls = 4;
+  string city = 5;
+  int32 default_price = 6;
+  string manager_id = 7;
+  float manager_rating = 8;
+  string manager_name = 9;
+  string manager_phone = 10;
+  repeated string manager_socials_urls = 11;
+  repeated CalendarDate busy_dates = 12;
 }
 
 message RentalListing {

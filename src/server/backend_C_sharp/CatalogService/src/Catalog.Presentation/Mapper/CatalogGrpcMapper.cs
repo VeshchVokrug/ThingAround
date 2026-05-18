@@ -61,7 +61,6 @@ public static class CatalogGrpcMapper
     {
         return new CreateRentalListingDto
         {
-            TitleSlug = request.TitleSlug,
             CategorySlug = request.CategorySlug,
             Title = request.Title,
             Description = request.Description,

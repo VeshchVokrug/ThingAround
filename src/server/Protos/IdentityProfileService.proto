@@ -6,7 +6,7 @@ option csharp_namespace = "IdentityProfileService.Grpc";
 
 import "google/protobuf/empty.proto";
 
-service IdentityProfileInternal {
+service IdentityProfileService {
   // --- Auth Section ---
   rpc Register(AuthRequest) returns (AuthResponse);
   rpc Login(AuthRequest) returns (AuthResponse);

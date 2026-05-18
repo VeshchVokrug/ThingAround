@@ -16,13 +16,7 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
         _context = context;
         _timeProvider = timeProvider;
     }
-
-    public async Task<IRepositoryTransaction> BeginTransactionAsync(CancellationToken ct = default)
-    {
-        var transaction = await _context.Database.BeginTransactionAsync(ct);
-        return new RepositoryTransaction(transaction);
-    }
-
+    
     public Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
         return _context.SaveChangesAsync(ct);
@@ -42,14 +36,16 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
         }, ct);
     }
 
-    public void PrepareInitialSlots(Guid listingId, int defaultPrice, IEnumerable<DateOnly> busyDates)
+    public async Task PrepareInitialSlotsAsync(Guid listingId, int defaultPrice, IEnumerable<DateOnly> busyDates)
     {
         var busyDaysSet = new HashSet<DateOnly>(busyDates);
         var slots = new List<AvailabilitySlot>(60);
 
+        var startDate = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
+        
         for (var i = 0; i < 60; i++)
         {
-            var date = Today.AddDays(i);
+            var date = startDate.AddDays(i);
             var isBusy = busyDaysSet.Contains(date);
             slots.Add(new AvailabilitySlot
             {
@@ -62,7 +58,7 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
             });
         }
 
-        _context.AvailabilitySlots.AddRange(slots);
+        await _context.AvailabilitySlots.AddRangeAsync(slots);
     }
 
     public async Task<List<AvailabilitySlotDto>> GetTwoMonthSlotsAsync(Guid listingId, CancellationToken ct = default)

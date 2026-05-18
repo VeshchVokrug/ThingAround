@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace IdentityProfileService.Presentation.gRPC;
 
 [Authorize]
-public class GrpcIdentityProfileService : IdentityProfileService.Grpc.IdentityProfileInternal.IdentityProfileInternalBase
+public class GrpcIdentityProfileService : IdentityProfileService.Grpc.IdentityProfileService.IdentityProfileServiceBase
 {
     private readonly AccountOrchestrator _orchestrator;
     private readonly IAuthService _authService;

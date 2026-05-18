@@ -4,6 +4,7 @@ using Catalog.Contracts.Repository.Abstractions;
 using Domain.Entity;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using NpgsqlTypes;
 
 namespace Infrastructure.Repository;
@@ -17,12 +18,6 @@ public class RentalListingRepository : IRentalListingRepository
     {
         _context = context;
         _availabilitySlotRepository = availabilitySlotRepository;
-    }
-
-    public async Task<IRepositoryTransaction> BeginTransactionAsync(CancellationToken ct = default)
-    {
-        var transaction = await _context.Database.BeginTransactionAsync(ct);
-        return new RepositoryTransaction(transaction);
     }
 
     public Task<int> SaveChangesAsync(CancellationToken ct = default)
@@ -182,7 +177,7 @@ public class RentalListingRepository : IRentalListingRepository
 
         await _context.RentalListings.AddAsync(listing, ct);
 
-        _availabilitySlotRepository.PrepareInitialSlots(listingId, listing.DefaultPrice, busyDates);
+        await _availabilitySlotRepository.PrepareInitialSlotsAsync(listingId, listing.DefaultPrice, busyDates);
 
         return listingId;
     }

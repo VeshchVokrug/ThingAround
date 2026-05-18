@@ -1,11 +1,11 @@
 ﻿using Gateway.Mappers.IdentityProfile;
 using Gateway.Models;
-using IdentityProfileService.Grpc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using AuthRequest = Gateway.Models.AuthRequest;
 using AuthResponse = Gateway.Models.AuthResponse;
 using RefreshRequest = Gateway.Models.RefreshRequest;
+using IdentityProfileClient = IdentityProfileService.Grpc.IdentityProfileService.IdentityProfileServiceClient;
 
 namespace Gateway.Controllers.IdentityProfile;
 
@@ -17,10 +17,10 @@ namespace Gateway.Controllers.IdentityProfile;
 [Authorize]
 public class AuthController : ControllerBase
 {
-    private readonly IdentityProfileInternal.IdentityProfileInternalClient _client;
+    private readonly IdentityProfileClient _client;
     private const string RefreshTokenCookieName = "refreshToken";
     
-    public AuthController(IdentityProfileInternal.IdentityProfileInternalClient client)
+    public AuthController(IdentityProfileClient client)
     {
         _client = client;
     }

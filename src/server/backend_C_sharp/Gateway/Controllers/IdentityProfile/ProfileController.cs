@@ -8,6 +8,7 @@ using CategoriesRequest = Gateway.Models.CategoriesRequest;
 using CreateProfileRequest = Gateway.Models.CreateProfileRequest;
 using ProfileResponse = Gateway.Models.ProfileResponse;
 using UpdateProfileRequest = Gateway.Models.UpdateProfileRequest;
+using IdentityProfileClient = IdentityProfileService.Grpc.IdentityProfileService.IdentityProfileServiceClient;
 
 namespace Gateway.Controllers.IdentityProfile;
 
@@ -19,9 +20,9 @@ namespace Gateway.Controllers.IdentityProfile;
 [Authorize]
 public class ProfileController : ControllerBase
 {
-    private readonly IdentityProfileInternal.IdentityProfileInternalClient _client;
+    private readonly IdentityProfileClient _client;
 
-    public ProfileController(IdentityProfileInternal.IdentityProfileInternalClient client)
+    public ProfileController(IdentityProfileClient client)
     {
         _client = client;
     }

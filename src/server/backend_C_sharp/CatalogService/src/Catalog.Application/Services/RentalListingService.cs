@@ -19,6 +19,7 @@ public class RentalListingService : IRentalListingService
     private readonly ILogger<RentalListingService> _logger;
     private readonly IUserContext _userContext;
     private readonly ISlugHelper _slugHelper;
+    private readonly Random _random;
 
     public RentalListingService(IRentalListingRepository rentalListingRepository, ILogger<RentalListingService> logger, IUserContext userContext, IAvailabilitySlotRepository availabilitySlotRepository, TimeProvider timeProvider, ISlugHelper slugHelper)
     {
@@ -28,6 +29,7 @@ public class RentalListingService : IRentalListingService
         _availabilitySlotRepository = availabilitySlotRepository;
         _timeProvider = timeProvider;
         _slugHelper = slugHelper;
+        _random = new Random();
     }
 
     public async Task<RentalListingDto> GetAsync(Guid listingId, CancellationToken ct = default)
@@ -44,8 +46,8 @@ public class RentalListingService : IRentalListingService
 
     public async Task<PagedResponse<RentalListingCard>> GetAllAsync(RentalFilterRequest request, CancellationToken ct = default)
     {
-        if (request.StartDate.HasValue && request.StartDate < DateOnly.FromDateTime(_timeProvider.GetUtcNow().DateTime)
-            || request.EndDate.HasValue && request.EndDate < DateOnly.FromDateTime(_timeProvider.GetUtcNow().Date))
+        if (request.StartDate.HasValue && request.StartDate < DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime)
+            || request.EndDate.HasValue && request.EndDate < DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime))
         {
             throw new ArgumentException("Неккоректные даты.");
         }
@@ -64,11 +66,9 @@ public class RentalListingService : IRentalListingService
 
     public async Task<Guid> CreateListingAsync(CreateRentalListingDto dto, CancellationToken ct = default)
     {
-        await using var transaction = await _rentalListingRepository.BeginTransactionAsync(ct);
-
         var listing = new RentalListing
         {
-            TitleSlug = _slugHelper.GenerateSlug(dto.Title),
+            TitleSlug = $"{_slugHelper.GenerateSlug(dto.Title)}-{_random.Next()}",
             Title = dto.Title,
             Description = dto.Description,
             OwnerId = _userContext.UserId,
@@ -78,8 +78,8 @@ public class RentalListingService : IRentalListingService
             OwnerRating = dto.ManagerRating,
             DefaultPrice = dto.DefaultPrice,
             IsActive = true,
-            CreatedAt = _timeProvider.GetUtcNow().DateTime,
-            UpdatedAt = _timeProvider.GetUtcNow().DateTime,
+            CreatedAt = _timeProvider.GetUtcNow().UtcDateTime,
+            UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime,
             Contact = new ContactInfo
             {
                 ManagerId = dto.ManagerId,
@@ -88,10 +88,9 @@ public class RentalListingService : IRentalListingService
                 SocialsUrls = dto.ManagerSocialsUrls
             },
         };
-        
+
         var listingId = await _rentalListingRepository.CreateAsync(listing, dto.BusyDates, ct);
         await _rentalListingRepository.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
 
         return listingId;
     }
@@ -128,10 +127,8 @@ public class RentalListingService : IRentalListingService
     {
         Guid? ownerId = _userContext.IsAdmin ? null : _userContext.UserId;
 
-        await using var transaction = await _rentalListingRepository.BeginTransactionAsync(ct);
-
-        var hasFullSnapshot = dto.AvailabilitySlots.Count > 0;
-        dto.TitleSlug = _slugHelper.GenerateSlug(dto.Title);
+        var hasFullSnapshot = dto.AvailabilitySlots?.Count > 0;
+        dto.TitleSlug = $"{_slugHelper.GenerateSlug(dto.Title)}-{_random.Next()}";
         if (!hasFullSnapshot)
         {
             var updated = await _rentalListingRepository.UpdateAsync(dto, ownerId, ct);
@@ -141,7 +138,6 @@ public class RentalListingService : IRentalListingService
             }
 
             await _rentalListingRepository.SaveChangesAsync(ct);
-            await transaction.CommitAsync(ct);
             return;
         }
 
@@ -156,20 +152,20 @@ public class RentalListingService : IRentalListingService
             throw new OptimisticConcurrencyException($"Конфликт версии объявления '{dto.Id}'.");
         }
 
-        ValidateSnapshotAndCollectSlotChanges(dto.Id, currentListing.AvailabilitySlots, dto.AvailabilitySlots,
+        ValidateSnapshotAndCollectSlotChanges(dto.Id, currentListing.AvailabilitySlots!, dto.AvailabilitySlots!,
             out var reserveDates, out var cancelDates);
 
         if (currentListing.DefaultPrice != dto.DefaultPrice)
         {
             var priceUpdated = await _availabilitySlotRepository.UpdateSlotsPriceAsync(
                 dto.Id,
-                currentListing.AvailabilitySlots,
+                currentListing.AvailabilitySlots!,
                 dto.DefaultPrice,
                 ct);
 
             if (!priceUpdated)
             {
-                throw new AvailabilityConflictException(dto.Id, currentListing.AvailabilitySlots.Select(s => s.Date));
+                throw new AvailabilityConflictException(dto.Id, currentListing.AvailabilitySlots!.Select(s => s.Date));
             }
         }
 
@@ -194,7 +190,6 @@ public class RentalListingService : IRentalListingService
         }
 
         await _rentalListingRepository.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
     }
 
     public async Task<bool> TryReserveSlotsAsync(ReservationSlotsDto dto, CancellationToken ct = default)
@@ -210,17 +205,14 @@ public class RentalListingService : IRentalListingService
             }
         }
         
-        await using var transaction = await _availabilitySlotRepository.BeginTransactionAsync(ct);
-
         var success = await _availabilitySlotRepository.TryReserveSlotsAsync(dto.ListingId, dto.Dates, dto.BookingId, ct );
 
         if (success)
         {
             await _availabilitySlotRepository.SaveChangesAsync(ct);
-            await transaction.CommitAsync(ct);
         }
 
-        return success 
+        return success
             ? true
             : throw new AvailabilityConflictException(dto.ListingId, dto.Dates);
     }

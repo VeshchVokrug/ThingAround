@@ -21,5 +21,5 @@ public record RentalListingDto
     public string OwnerName { get; set; }
     public string OwnerPhone { get; set; }
     public List<string>? OwnerSocialsUrls { get; set; }
-    public List<AvailabilitySlotDto> AvailabilitySlots { get; set; }
+    public List<AvailabilitySlotDto>? AvailabilitySlots { get; set; }
 }

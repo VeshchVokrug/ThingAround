@@ -6,7 +6,6 @@ using Gateway.Infrastructure.Auth;
 using Gateway.Infrastructure.Middleware;
 using Gateway.Models;
 using Gateway.Models.Configuration;
-using IdentityProfileService.Grpc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -79,7 +78,7 @@ public class Program
 			var securityScheme = new OpenApiSecurityScheme
 			{
 				Name = "Authorization",
-				Description = "JWT Authorization header using the Bearer scheme. Example: Bearer {token}",
+				Description = "JWT Authorization header using the Bearer scheme. Example: {token}",
 				In = ParameterLocation.Header,
 				Type = SecuritySchemeType.Http,
 				Scheme = "bearer",
@@ -140,14 +139,23 @@ public class Program
 	{
 		services.Configure<GrpcEndpointsOptions>(configuration.GetSection(GrpcEndpointsOptions.SectionName));
 
-		var grpcEndpoint = configuration.GetSection(GrpcEndpointsOptions.SectionName)
-			.GetValue<string>(nameof(GrpcEndpointsOptions.IdentityProfileService))
-						   ?? throw new InvalidOperationException("GrpcEndpoints:IdentityProfileService is required.");
-
-		services.AddGrpcClient<IdentityProfileInternal.IdentityProfileInternalClient>(options =>
+		var grpcIdentityEndpoint = GetGrpcConnectionEndpoint(nameof(GrpcEndpointsOptions.IdentityProfileService), configuration);
+		services.AddGrpcClient<IdentityProfileService.Grpc.IdentityProfileService.IdentityProfileServiceClient>(options =>
 		{
-			options.Address = new Uri(grpcEndpoint);
+			options.Address = new Uri(grpcIdentityEndpoint);
 		});
+		
+		var grpcCatalogEndpoint = GetGrpcConnectionEndpoint(nameof(GrpcEndpointsOptions.CatalogService), configuration);
+		services.AddGrpcClient<CatalogService.Grpc.CatalogService.CatalogServiceClient>(options =>
+		{
+			options.Address = new Uri(grpcCatalogEndpoint);
+		});
+	}
+
+	private static string GetGrpcConnectionEndpoint(string serviceName, IConfiguration configuration)
+	{
+		return configuration.GetSection(GrpcEndpointsOptions.SectionName).GetValue<string>(serviceName)
+			?? throw new InvalidOperationException($"{serviceName} is required.");
 	}
 
 	private static void ConfigureJwtAuthentication(WebApplicationBuilder builder)

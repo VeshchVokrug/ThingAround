@@ -60,7 +60,7 @@ public class AvailabilitySlotRepositoryTests
         var busyDates = new List<DateOnly> { busyDate };
 
         // Act
-        sut.PrepareInitialSlots(listingId, 100, busyDates);
+        sut.PrepareInitialSlotsAsync(listingId, 100, busyDates);
         await sut.SaveChangesAsync();
 
         // Assert

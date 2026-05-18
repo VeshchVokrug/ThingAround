@@ -4,7 +4,6 @@ namespace Catalog.Contracts.DTO.Listing.Rental;
 
 public record CreateRentalListingDto
 {
-    public string TitleSlug { get; set; }
     public required string CategorySlug { get; set; }
     public string Title { get; set; }
     public string Description { get; set; }

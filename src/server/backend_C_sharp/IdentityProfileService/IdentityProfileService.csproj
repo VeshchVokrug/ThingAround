@@ -50,11 +50,5 @@
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
     </ItemGroup>
-    
-    <ItemGroup>
-      <Reference Include="Protos">
-        <HintPath>bin\Debug\net10.0\Protos.dll</HintPath>
-      </Reference>
-    </ItemGroup>
 
 </Project>

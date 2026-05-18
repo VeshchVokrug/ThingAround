@@ -10,7 +10,7 @@ public static class ApplicationExtensions
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddScoped<IRentalListingService, RentalListingService>();
-        services.AddSingleton<ISlugHelper, SlugHelper>();
+        services.AddSingleton<ISlugHelper>(SlugConfigurator.GetRussianSlugHelper());
         
         return services;
     }

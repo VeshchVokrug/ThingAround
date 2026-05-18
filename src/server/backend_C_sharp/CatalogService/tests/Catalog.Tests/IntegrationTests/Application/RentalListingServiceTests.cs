@@ -41,16 +41,6 @@ public class RentalListingServiceTests
         _userContext = Substitute.For<IUserContext>();
         var logger = Substitute.For<ILogger<RentalListingService>>();
         _timeProvider = new FakeTimeProvider(new DateTimeOffset(2026, 4, 10, 12, 0, 0, TimeSpan.Zero));
-
-        var listingTransaction = Substitute.For<IRepositoryTransaction>();
-        listingTransaction.CommitAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
-        listingTransaction.DisposeAsync().Returns(ValueTask.CompletedTask);
-        _listingRepo.BeginTransactionAsync(Arg.Any<CancellationToken>()).Returns(listingTransaction);
-
-        var slotTransaction = Substitute.For<IRepositoryTransaction>();
-        slotTransaction.CommitAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
-        slotTransaction.DisposeAsync().Returns(ValueTask.CompletedTask);
-        _slotRepo.BeginTransactionAsync(Arg.Any<CancellationToken>()).Returns(slotTransaction);
         
         _service = new RentalListingService(
             _listingRepo,

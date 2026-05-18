@@ -6,7 +6,6 @@ namespace Catalog.Contracts.Repository.Abstractions;
 
 public interface IRentalListingRepository
 {
-    Task<IRepositoryTransaction> BeginTransactionAsync(CancellationToken ct = default);
     Task<int> SaveChangesAsync(CancellationToken ct = default);
     Task<RentalListingDto?> GetAsync(Guid listingId, CancellationToken ct = default);
     Task<List<RentalListingCard>> GetAllByUserAsync(Guid ownerId, CancellationToken ct = default);
