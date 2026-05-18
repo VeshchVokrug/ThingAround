@@ -80,7 +80,8 @@ public class RecommendationEventConsumer {
             return;
         }
         if (forbidsListing(eventType) && event.hasListing()) {
-            logger.warn("Пропускаю событие {} типа {}: listingId должен быть null/empty", event.eventId(), eventType.getValue());
+            logger.warn("Пропускаю событие {} типа {}: listingId должен быть null/empty",
+                    event.eventId(), eventType.getValue());
             return;
         }
 

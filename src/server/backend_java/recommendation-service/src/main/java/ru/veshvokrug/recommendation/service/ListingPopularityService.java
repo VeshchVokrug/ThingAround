@@ -54,9 +54,11 @@ public class ListingPopularityService {
                 redisTemplate.opsForZSet().add(key, listingId, 0.0);
                 newScore = 0.0;
             }
-            logger.debug("Обновлена популярность объявления {} в категории {} до {}", listingId, categorySlug, newScore);
+            logger.debug("Обновлена популярность объявления {} в категории {} до {}",
+                    listingId, categorySlug, newScore);
         } catch (Exception e) {
-            logger.error("Ошибка при инкременте популярности объявления {} в категории {}", listingId, categorySlug, e);
+            logger.error("Ошибка при инкременте популярности объявления {} в категории {}",
+                    listingId, categorySlug, e);
         }
     }
 

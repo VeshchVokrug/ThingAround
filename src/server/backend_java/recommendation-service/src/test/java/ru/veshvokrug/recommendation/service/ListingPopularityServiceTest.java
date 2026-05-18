@@ -92,7 +92,8 @@ class ListingPopularityServiceTest {
 
     @Test
     void shouldReturnEmptyWhenRedisThrowsError() {
-        when(zSetOperations.reverseRange("pop:sports", 0, 2L)).thenThrow(new RuntimeException("redis down"));
+        when(zSetOperations.reverseRange("pop:sports", 0, 2L))
+                .thenThrow(new RuntimeException("redis down"));
         assertTrue(service.getTopListings("sports", 3).isEmpty());
     }
 }

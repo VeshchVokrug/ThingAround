@@ -85,7 +85,8 @@ public class RecommendationService {
             Map<String, List<String>> listingsByCategory = new LinkedHashMap<>();
 
             for (String categorySlug : topCategories.keySet()) {
-                List<String> categoryListings = listingPopularityService.getTopListings(categorySlug, listingsPerCategory);
+                List<String> categoryListings = listingPopularityService
+                        .getTopListings(categorySlug, listingsPerCategory);
                 if (!categoryListings.isEmpty()) {
                     listingsByCategory.put(categorySlug, categoryListings);
                 }
@@ -138,7 +139,11 @@ public class RecommendationService {
     private void writeToCache(String cacheKey, List<String> recommendations) {
         try {
             String payload = objectMapper.writeValueAsString(recommendations);
-            redisTemplate.opsForValue().set(cacheKey, payload, weightsConfig.getRecommendationCacheTtlSeconds(), TimeUnit.SECONDS);
+            redisTemplate.opsForValue().set(
+                    cacheKey,
+                    payload,
+                    weightsConfig.getRecommendationCacheTtlSeconds(),
+                    TimeUnit.SECONDS);
         } catch (Exception e) {
             logger.warn("Не удалось записать кэш рекомендаций {}", cacheKey, e);
         }

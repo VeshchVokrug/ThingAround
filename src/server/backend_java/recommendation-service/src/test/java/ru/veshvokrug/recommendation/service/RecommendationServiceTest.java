@@ -88,7 +88,8 @@ class RecommendationServiceTest {
         assertEquals(List.of("s1", "t1", "s2", "t2"), result);
 
         ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
-        verify(valueOperations).set(eq("rec:user-1:4"), payloadCaptor.capture(), eq(300L), eq(TimeUnit.SECONDS));
+        verify(valueOperations)
+                .set(eq("rec:user-1:4"), payloadCaptor.capture(), eq(300L), eq(TimeUnit.SECONDS));
         assertTrue(payloadCaptor.getValue().contains("s1"));
         verify(userCategoryWeightService).getTopCategories("user-1", 2);
         verify(listingPopularityService, times(2)).getTopListings(anyString(), anyInt());

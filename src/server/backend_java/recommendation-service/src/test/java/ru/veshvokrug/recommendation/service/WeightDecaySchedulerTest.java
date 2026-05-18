@@ -41,7 +41,11 @@ class WeightDecaySchedulerTest {
         EventWeightsConfig config = new EventWeightsConfig();
         when(redisTemplate.keys("user:*:cat_weights")).thenReturn(Set.of("user:u1:cat_weights"));
         when(redisTemplate.keys("pop:*")).thenReturn(Set.of("pop:sports"));
-        scheduler = new WeightDecayScheduler(redisTemplate, config, userCategoryWeightService, listingPopularityService);
+        scheduler = new WeightDecayScheduler(
+                redisTemplate,
+                config,
+                userCategoryWeightService,
+                listingPopularityService);
     }
 
     @Test
@@ -81,17 +85,23 @@ class WeightDecaySchedulerTest {
         config.setUserInterestHalfLifeDays(0);
         config.setListingPopularityHalfLifeDays(-1);
 
-        scheduler = new WeightDecayScheduler(redisTemplate, config, userCategoryWeightService, listingPopularityService);
+        scheduler = new WeightDecayScheduler(
+                redisTemplate,
+                config,
+                userCategoryWeightService,
+                listingPopularityService);
 
         scheduler.applyUserCategoryDecay();
         scheduler.applyListingPopularityDecay();
 
         ArgumentCaptor<Double> decayCaptor = ArgumentCaptor.forClass(Double.class);
-        verify(userCategoryWeightService).applyDecay(org.mockito.ArgumentMatchers.eq("u1"), decayCaptor.capture());
+        verify(userCategoryWeightService)
+                .applyDecay(org.mockito.ArgumentMatchers.eq("u1"), decayCaptor.capture());
         assertEquals(1.0, decayCaptor.getValue(), 1e-9);
 
         ArgumentCaptor<Double> popDecayCaptor = ArgumentCaptor.forClass(Double.class);
-        verify(listingPopularityService).applyDecay(org.mockito.ArgumentMatchers.eq("sports"), popDecayCaptor.capture());
+        verify(listingPopularityService)
+                .applyDecay(org.mockito.ArgumentMatchers.eq("sports"), popDecayCaptor.capture());
         assertEquals(1.0, popDecayCaptor.getValue(), 1e-9);
     }
 }

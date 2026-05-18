@@ -11,7 +11,13 @@ class RecommendationEventDtoTest {
 
     @Test
     void shouldValidateCorrectEvent() {
-        RecommendationEventDto event = new RecommendationEventDto("e1", "u1", "ListingViewed", "sports", "l1", 1L);
+        RecommendationEventDto event = new RecommendationEventDto(
+                "e1",
+                "u1",
+                "ListingViewed",
+                "sports",
+                "l1",
+                1L);
 
         assertTrue(event.isValid());
         assertTrue(event.hasCategorySlug());
@@ -20,7 +26,13 @@ class RecommendationEventDtoTest {
 
     @Test
     void shouldRejectInvalidEvent() {
-        RecommendationEventDto event = new RecommendationEventDto("", "", "", null, null, 0L);
+        RecommendationEventDto event = new RecommendationEventDto(
+                "",
+                "",
+                "",
+                null,
+                null,
+                0L);
 
         assertFalse(event.isValid());
         assertFalse(event.hasCategorySlug());

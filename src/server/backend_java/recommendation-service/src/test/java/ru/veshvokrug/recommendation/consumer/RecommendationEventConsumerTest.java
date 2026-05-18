@@ -36,7 +36,13 @@ class RecommendationEventConsumerTest {
     @Test
     void shouldProcessValidEvent() {
         Consumer<RecommendationEventDto> fn = consumer.handleRecommendationEvent();
-        fn.accept(new RecommendationEventDto("e1", "u1", "ListingFavorited", "sports", "l1", System.currentTimeMillis()));
+        fn.accept(new RecommendationEventDto(
+                "e1",
+                "u1",
+                "ListingFavorited",
+                "sports",
+                "l1",
+                System.currentTimeMillis()));
 
         verify(userCategoryWeightService).incrementCategoryWeight("u1", "sports", 0.7);
         verify(listingPopularityService).incrementListingPopularity("sports", "l1", 5.0);
@@ -45,7 +51,13 @@ class RecommendationEventConsumerTest {
     @Test
     void shouldIgnoreEventWithoutCategory() {
         Consumer<RecommendationEventDto> fn = consumer.handleRecommendationEvent();
-        fn.accept(new RecommendationEventDto("e1", "u1", "ListingViewed", null, "l1", System.currentTimeMillis()));
+        fn.accept(new RecommendationEventDto(
+                "e1",
+                "u1",
+                "ListingViewed",
+                null,
+                "l1",
+                System.currentTimeMillis()));
 
         verifyNoInteractions(userCategoryWeightService, listingPopularityService);
     }
@@ -53,7 +65,13 @@ class RecommendationEventConsumerTest {
     @Test
     void shouldIgnoreInvalidEvent() {
         Consumer<RecommendationEventDto> fn = consumer.handleRecommendationEvent();
-        fn.accept(new RecommendationEventDto("", "u1", "ListingViewed", "sports", "l1", 1L));
+        fn.accept(new RecommendationEventDto(
+                "",
+                "u1",
+                "ListingViewed",
+                "sports",
+                "l1",
+                1L));
 
         verifyNoInteractions(userCategoryWeightService, listingPopularityService);
     }
@@ -61,7 +79,13 @@ class RecommendationEventConsumerTest {
     @Test
     void shouldIgnoreUnknownEventType() {
         Consumer<RecommendationEventDto> fn = consumer.handleRecommendationEvent();
-        fn.accept(new RecommendationEventDto("e1", "u1", "UnknownEvent", "sports", "l1", 1L));
+        fn.accept(new RecommendationEventDto(
+                "e1",
+                "u1",
+                "UnknownEvent",
+                "sports",
+                "l1",
+                1L));
 
         verifyNoInteractions(userCategoryWeightService, listingPopularityService);
     }
@@ -69,7 +93,13 @@ class RecommendationEventConsumerTest {
     @Test
     void shouldUpdateOnlyUserWeightsWhenListingMissing() {
         Consumer<RecommendationEventDto> fn = consumer.handleRecommendationEvent();
-        fn.accept(new RecommendationEventDto("e1", "u1", "SearchPerformed", "sports", null, 1L));
+        fn.accept(new RecommendationEventDto(
+                "e1",
+                "u1",
+                "SearchPerformed",
+                "sports",
+                null,
+                1L));
 
         verify(userCategoryWeightService).incrementCategoryWeight("u1", "sports", 0.3);
         verifyNoInteractions(listingPopularityService);
@@ -78,7 +108,13 @@ class RecommendationEventConsumerTest {
     @Test
     void shouldIgnoreListingBasedEventWhenListingIsMissing() {
         Consumer<RecommendationEventDto> fn = consumer.handleRecommendationEvent();
-        fn.accept(new RecommendationEventDto("e1", "u1", "ListingViewed", "sports", null, 1L));
+        fn.accept(new RecommendationEventDto(
+                "e1",
+                "u1",
+                "ListingViewed",
+                "sports",
+                null,
+                1L));
 
         verifyNoInteractions(userCategoryWeightService, listingPopularityService);
     }
@@ -86,7 +122,13 @@ class RecommendationEventConsumerTest {
     @Test
     void shouldIgnoreCategoryOnlyEventWhenListingIsPresent() {
         Consumer<RecommendationEventDto> fn = consumer.handleRecommendationEvent();
-        fn.accept(new RecommendationEventDto("e1", "u1", "SearchPerformed", "sports", "l1", 1L));
+        fn.accept(new RecommendationEventDto(
+                "e1",
+                "u1",
+                "SearchPerformed",
+                "sports",
+                "l1",
+                1L));
 
         verifyNoInteractions(userCategoryWeightService, listingPopularityService);
     }

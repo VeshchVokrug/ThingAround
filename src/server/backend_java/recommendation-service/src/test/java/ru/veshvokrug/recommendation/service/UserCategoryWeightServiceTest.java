@@ -46,7 +46,9 @@ class UserCategoryWeightServiceTest {
 
 	@Test
 	void shouldClampNegativeCategoryWeightToZero() {
-		when(hashOperations.increment("user:u1:cat_weights", "sports", -5.0)).thenReturn(-1.0);
+		when(hashOperations
+				.increment("user:u1:cat_weights", "sports", -5.0))
+				.thenReturn(-1.0);
 
 		service.incrementCategoryWeight("u1", "sports", -5.0);
 

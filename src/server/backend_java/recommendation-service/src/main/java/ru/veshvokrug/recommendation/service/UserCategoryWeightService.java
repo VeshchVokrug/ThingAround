@@ -80,7 +80,8 @@ public class UserCategoryWeightService {
                             }
                     ))
                     .entrySet().stream()
-                    .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                    .sorted((a, b) ->
+                            Double.compare(b.getValue(), a.getValue()))
                     .limit(topK)
                     .collect(Collectors.toMap(
                             Map.Entry::getKey,
@@ -131,7 +132,8 @@ public class UserCategoryWeightService {
                     double newWeight = currentWeight * decayMultiplier;
                     redisTemplate.opsForHash().put(key, entry.getKey().toString(), String.valueOf(newWeight));
                 } catch (NumberFormatException e) {
-                    logger.warn("Пропускаю некорректный вес для пользователя {} и категории {}", userId, entry.getKey(), e);
+                    logger.warn("Пропускаю некорректный вес для пользователя {} и категории {}",
+                            userId, entry.getKey(), e);
                 }
             }
             logger.debug("Применён decay {} для пользователя {}", decayMultiplier, userId);
@@ -156,10 +158,12 @@ public class UserCategoryWeightService {
                         deletedCount++;
                     }
                 } catch (NumberFormatException e) {
-                    logger.warn("Пропускаю некорректный вес при очистке: пользователь {} категория {}", userId, entry.getKey());
+                    logger.warn("Пропускаю некорректный вес при очистке: пользователь {} категория {}",
+                            userId, entry.getKey());
                 }
             }
-            logger.debug("Удалено {} весов категорий ниже порога {} для пользователя {}", deletedCount, threshold, userId);
+            logger.debug("Удалено {} весов категорий ниже порога {} для пользователя {}",
+                    deletedCount, threshold, userId);
         } catch (Exception e) {
             logger.error("Ошибка при удалении весов ниже порога для пользователя {}", userId, e);
         }
