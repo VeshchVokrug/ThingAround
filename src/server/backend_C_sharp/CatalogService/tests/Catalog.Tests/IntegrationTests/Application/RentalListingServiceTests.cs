@@ -239,8 +239,42 @@ public class RentalListingServiceTests
     public async Task UpdateListing_WhenAdminUpdates_PassesNullAsOwnerId()
     {
         // Arrange
-        var dto = new RentalListingDto() { Id = Guid.NewGuid(), Title = "New Title", CategorySlug = Category.ArtEquip.ToString() };
+        var slotDate = new DateOnly(2026, 4, 10);
+        var availabilitySlots = new List<AvailabilitySlotDto>
+        {
+            new()
+            {
+                Date = slotDate,
+                Version = 1,
+                IsAvailable = true,
+                IsReversible = true,
+                BookingId = null
+            }
+        };
+
+        var dto = new RentalListingDto
+        {
+            Id = Guid.NewGuid(),
+            Version = 1,
+            Title = "New Title",
+            CategorySlug = Category.ArtEquip.ToString(),
+            DefaultPrice = 100,
+            AvailabilitySlots = availabilitySlots
+        };
+
+        var currentListing = new RentalListingDto
+        {
+            Id = dto.Id,
+            Version = dto.Version,
+            TitleSlug = "new-title",
+            Title = dto.Title,
+            CategorySlug = dto.CategorySlug,
+            DefaultPrice = dto.DefaultPrice,
+            AvailabilitySlots = availabilitySlots
+        };
+
         _userContext.IsAdmin.Returns(true);
+        _listingRepo.GetAsync(dto.Id, Arg.Any<CancellationToken>()).Returns(currentListing);
         _listingRepo.UpdateAsync(dto, null, Arg.Any<CancellationToken>()).Returns(true);
 
         // Act
@@ -254,9 +288,43 @@ public class RentalListingServiceTests
     public async Task UpdateListing_WhenSuccess_DoesNotThrow()
     {
         // Arrange
-        var dto = new RentalListingDto() { Id = Guid.NewGuid(), Title = "Updated title", CategorySlug = Category.ArtEquip.ToString() };
+        var slotDate = new DateOnly(2026, 4, 10);
+        var availabilitySlots = new List<AvailabilitySlotDto>
+        {
+            new()
+            {
+                Date = slotDate,
+                Version = 1,
+                IsAvailable = true,
+                IsReversible = true,
+                BookingId = null
+            }
+        };
+
+        var dto = new RentalListingDto
+        {
+            Id = Guid.NewGuid(),
+            Version = 1,
+            Title = "Updated title",
+            CategorySlug = Category.ArtEquip.ToString(),
+            DefaultPrice = 100,
+            AvailabilitySlots = availabilitySlots
+        };
+
+        var currentListing = new RentalListingDto
+        {
+            Id = dto.Id,
+            Version = dto.Version,
+            TitleSlug = "updated-title",
+            Title = dto.Title,
+            CategorySlug = dto.CategorySlug,
+            DefaultPrice = dto.DefaultPrice,
+            AvailabilitySlots = availabilitySlots
+        };
+
         _userContext.IsAdmin.Returns(false);
         _userContext.UserId.Returns(Guid.NewGuid());
+        _listingRepo.GetAsync(dto.Id, Arg.Any<CancellationToken>()).Returns(currentListing);
         _listingRepo.UpdateAsync(Arg.Any<RentalListingDto>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
