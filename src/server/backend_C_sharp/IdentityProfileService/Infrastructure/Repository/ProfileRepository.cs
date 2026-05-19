@@ -17,11 +17,6 @@ public class ProfileRepository : IProfileRepository
 
     public async Task<Profile> AddAsync(Profile profile, CancellationToken ct)
     {
-        if (profile.Id == Guid.Empty)
-        {
-            profile.Id = Guid.NewGuid();
-        }
-        
         await _dbContext.Profiles.AddAsync(profile, ct);
         await _dbContext.SaveChangesAsync(ct);
         

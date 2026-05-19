@@ -66,6 +66,11 @@ public class RentalListingService : IRentalListingService
 
     public async Task<Guid> CreateListingAsync(CreateRentalListingDto dto, CancellationToken ct = default)
     {
+        if (_userContext.UserId == Guid.Empty)
+        {
+            throw new Exception("User id is empty.");
+        }
+        
         var listing = new RentalListing
         {
             TitleSlug = $"{_slugHelper.GenerateSlug(dto.Title)}-{_random.Next()}",

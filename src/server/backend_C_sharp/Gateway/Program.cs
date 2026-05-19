@@ -143,13 +143,15 @@ public class Program
 		services.AddGrpcClient<IdentityProfileService.Grpc.IdentityProfileService.IdentityProfileServiceClient>(options =>
 		{
 			options.Address = new Uri(grpcIdentityEndpoint);
-		});
+		})
+		.AddHeaderPropagation();
 		
 		var grpcCatalogEndpoint = GetGrpcConnectionEndpoint(nameof(GrpcEndpointsOptions.CatalogService), configuration);
 		services.AddGrpcClient<CatalogService.Grpc.CatalogService.CatalogServiceClient>(options =>
 		{
 			options.Address = new Uri(grpcCatalogEndpoint);
-		});
+		})
+		.AddHeaderPropagation();
 	}
 
 	private static string GetGrpcConnectionEndpoint(string serviceName, IConfiguration configuration)
@@ -214,6 +216,11 @@ public class Program
 		services.AddHttpContextAccessor();
 		services.AddAuthorization();
 
+		services.AddHeaderPropagation(options =>
+		{
+			options.Headers.Add("Authorization");
+		});		
+		
 		services.AddSingleton<IRedisPrefixResolver, RequestRedisPrefixResolver>();
 		services.AddScoped<ITokenBlacklistValidator, RedisTokenBlacklistValidator>();
 	}
@@ -228,6 +235,8 @@ public class Program
 		
 		app.UseMiddleware<GatewayExceptionMiddleware>();
 
+		app.UseHeaderPropagation(); 
+		
 		app.UseCors(ReactCorsPolicy);
 		
 		app.UseAuthentication();

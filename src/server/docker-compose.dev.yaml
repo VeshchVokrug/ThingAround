@@ -73,6 +73,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
       - GrpcEndpoints__IdentityProfileService=http://identity-profile:8080
+      - GrpcEndpoints__CatalogService=http://catalog:8080
       - ConnectionStrings__Redis=redis:6379,abortConnect=false
       - Jwt__Issuer=ThingAround.IdentityServer
       - Jwt__Audience=ThingAround.Client
@@ -82,6 +83,24 @@ services:
       - thingaround-network
     depends_on:
       - identity-profile
+      - redis
+
+  catalog:
+    build:
+      context: .
+      dockerfile: backend_C_sharp/CatalogService/Dockerfile
+    container_name: catalog_service
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Kestrel__Endpoints__gRPC__Url=http://*:8080
+      - ConnectionStrings__PostgresConnectionString=Host=db;Port=5432;Database=catalog_db;Username=admin;Password=admin
+      - ConnectionStrings__Redis=redis:6379,abortConnect=false
+    networks:
+      - thingaround-network
+    depends_on:
+      - db
       - redis
     
 networks:

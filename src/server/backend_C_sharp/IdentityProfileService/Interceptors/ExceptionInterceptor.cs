@@ -41,7 +41,7 @@ public class ExceptionInterceptor : Interceptor
             InvalidTokenException => new RpcException(new Status(StatusCode.Unauthenticated, exception.Message)),
             SessionExpiredException => new RpcException(new Status(StatusCode.Unauthenticated, exception.Message)),
             InvalidCredentials => new RpcException(new Status(StatusCode.Unauthenticated, "Invalid username or password")),
-            
+            UserProfileAlreadyExist => new RpcException(new Status(StatusCode.AlreadyExists, exception.Message)), 
             UserAccountBlocked => new RpcException(new Status(StatusCode.PermissionDenied, "Account is suspended")),
             
             UserNotFoundException => new RpcException(new Status(StatusCode.NotFound, exception.Message)),

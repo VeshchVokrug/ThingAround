@@ -86,6 +86,7 @@ public class Program
     {
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
             .MinimumLevel.Override("Grpc", LogEventLevel.Warning)
             .Enrich.FromLogContext()
             .Enrich.WithSpan()

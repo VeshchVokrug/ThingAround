@@ -32,6 +32,13 @@ public class ProfileManager : IProfileManager
 
     public async Task<ProfileDto> CreateAsync(ProfileDto dto, CancellationToken ct)
     {
+        var existingProfile = await _profileRepository.FindByAccountIdAsync(dto.Id, ct);
+
+        if (existingProfile != null)
+        {
+            throw new UserProfileAlreadyExist(dto.Id);
+        }
+        
         var profile = await _profileRepository.AddAsync(dto.ToEntity(), ct);
         
         _logger.LogInformation("Profile with id {id} created successfully", dto.Id);
