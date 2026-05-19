@@ -20,9 +20,9 @@ public class RentalListingRepository : IRentalListingRepository
         _availabilitySlotRepository = availabilitySlotRepository;
     }
 
-    public Task<int> SaveChangesAsync(CancellationToken ct = default)
+    public async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
-        return _context.SaveChangesAsync(ct);
+        return await _context.SaveChangesAsync(ct);
     }
 
     public async Task<RentalListingDto?> GetAsync(Guid listingId, CancellationToken ct = default)
@@ -168,10 +168,7 @@ public class RentalListingRepository : IRentalListingRepository
 
     public async Task<Guid> CreateAsync(RentalListing listing, IEnumerable<DateOnly> busyDates, CancellationToken ct = default)
     {
-        if (listing.Id == Guid.Empty)
-        {
-            listing.Id = Guid.NewGuid();
-        }
+          
 
         var listingId = listing.Id;
 

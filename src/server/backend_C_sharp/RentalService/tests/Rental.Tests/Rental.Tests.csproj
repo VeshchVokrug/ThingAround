@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+        <RootNamespace>Catalog.Tests</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="coverlet.collector" Version="6.0.4"/>
+        <PackageReference Include="EFCore.NamingConventions" Version="10.0.0" />
+        <PackageReference Include="FluentAssertions" Version="8.9.0" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />
+        <PackageReference Include="Testcontainers.PostgreSql" Version="4.11.0" />
+        <PackageReference Include="xunit" Version="2.9.3"/>
+        <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\RentalService.Domain\RentalService.Domain.csproj" />
+        <ProjectReference Include="..\..\src\RentalService.Infrastructure\RentalService.Infrastructure.csproj" />
+        <ProjectReference Include="..\..\src\RentalService.Infrastructure.Abstractions\RentalService.Infrastructure.Abstractions.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -1,33 +1,74 @@
-﻿using RentalService.Domain.Entity;
+﻿using Microsoft.EntityFrameworkCore;
+using RentalService.Domain.Entity;
 using RentalService.Infrastructure.Abstractions.DTO;
 using RentalService.Infrastructure.Abstractions.Repository.Abstractions;
+using RentalService.Infrastructure.Persistence;
 
 namespace RentalService.Infrastructure.Repository;
 
 public class BookingRepository : IBookingRepository
 {
-    public Task<Booking> GetAsync(Guid id)
+    private readonly RentalDbContext _context;
+
+    public BookingRepository(RentalDbContext context)
     {
-        throw new NotImplementedException();
+        _context = context;
     }
 
-    public Task<IEnumerable<Booking>> GetAllByOwnerAsync(Guid ownerId)
+    public async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        return await _context.SaveChangesAsync(ct);
     }
 
-    public Task<IEnumerable<Booking>> GetAllByTenantAsync(Guid userId)
-    {
-        throw new NotImplementedException();
+    public async Task<Booking?> GetAsync(Guid id)
+    { 
+        return await _context.Bookings
+            .AsNoTracking()
+            .Where(b => b.Id == id)
+            .FirstOrDefaultAsync();
     }
 
-    public Task<Guid> AddAsync(Booking booking)
+    public async Task<IEnumerable<Booking>> GetAllByOwnerAsync(Guid ownerId)
     {
-        throw new NotImplementedException();
+        return await _context.Bookings
+            .AsNoTracking()
+            .Where(b => b.OwnerId == ownerId)
+            .OrderByDescending(b => b.CreatedAt)    
+            .ToListAsync();
     }
 
-    public Task<bool> UpdateAsync(UpdateBookingDto booking)
+    public async Task<IEnumerable<Booking>> GetAllByTenantAsync(Guid tenantId)
     {
-        throw new NotImplementedException();
+        return await _context.Bookings
+            .AsNoTracking()
+            .Where(b => b.TenantId == tenantId)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+
+    public async Task AddAsync(Booking booking)
+    {
+        await _context.Bookings.AddAsync(booking);
+    }
+
+    public async Task<bool> UpdateAsync(UpdateBookingDto dto)
+    {
+        var booking = await _context.Bookings
+            .Where(b => b.Id == dto.Id)
+            .Where(b => b.Version == dto.Version)
+            .FirstOrDefaultAsync();
+
+        if (booking == null)
+        {
+            return false;
+        }
+
+        booking.Status = dto.Status ?? booking.Status;
+        booking.CancellationReason = dto.CancellationReason ?? booking.CancellationReason;
+        booking.ExpiresAt = dto.ExpiresAt ?? booking.ExpiresAt;
+        booking.UpdatedAt = dto.UpdatedAt;
+        booking.Version++;
+        
+        return true;
     }
 }

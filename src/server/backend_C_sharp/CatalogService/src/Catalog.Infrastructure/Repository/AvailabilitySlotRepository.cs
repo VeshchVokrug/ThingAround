@@ -17,9 +17,9 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
         _timeProvider = timeProvider;
     }
     
-    public Task<int> SaveChangesAsync(CancellationToken ct = default)
+    public async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
-        return _context.SaveChangesAsync(ct);
+        return await _context.SaveChangesAsync(ct);
     }
 
     private DateOnly Today => DateOnly.FromDateTime(_timeProvider.GetUtcNow().DateTime);

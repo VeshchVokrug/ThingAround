@@ -5,9 +5,10 @@ namespace RentalService.Infrastructure.Abstractions.Repository.Abstractions;
 
 public interface IBookingRepository
 {
-    Task<Booking> GetAsync(Guid id);
+    Task<int> SaveChangesAsync(CancellationToken ct = default);
+    Task<Booking?> GetAsync(Guid id);
     Task<IEnumerable<Booking>> GetAllByOwnerAsync(Guid ownerId);
-    Task<IEnumerable<Booking>> GetAllByTenantAsync(Guid userId);
-    Task<Guid> AddAsync(Booking booking);
-    Task<bool> UpdateAsync(UpdateBookingDto booking);
+    Task<IEnumerable<Booking>> GetAllByTenantAsync(Guid tenantId);
+    Task AddAsync(Booking booking);
+    Task<bool> UpdateAsync(UpdateBookingDto dto);
 }
