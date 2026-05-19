@@ -1,0 +1,32 @@
+package ru.veshvokrug.coownership.output.repository;
+
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import ru.veshvokrug.coownership.model.entity.CoownershipListing;
+
+import java.util.Optional;
+import java.util.UUID;
+
+/**
+ * @author Dmitrii Marchenko 13.04.2026
+ */
+public interface CoownershipListingRepository extends JpaRepository<CoownershipListing, UUID> {
+	Optional<CoownershipListing> findByCatalogListingId(UUID catalogListingId);
+
+	@Lock(LockModeType.PESSIMISTIC_READ)
+	@Query("""
+			select l from CoownershipListing l
+			where l.id = :id
+			""")
+	Optional<CoownershipListing> findWithLockingById(@Param("id") UUID id);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("""
+			select l from CoownershipListing l
+			where l.id = :id
+			""")
+	Optional<CoownershipListing> findWithWriteLockingById(@Param("id") UUID id);
+}

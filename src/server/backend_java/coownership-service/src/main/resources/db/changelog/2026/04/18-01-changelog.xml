@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-5.0.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+    <changeSet id="1776496813184-1" author="dimamarch">
+        <createTable tableName="coownership_listings">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_coownership_listings"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="catalog_listing_id" type="UUID"/>
+            <column name="owner_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_shares" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="filled_shares" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="funding_deadline" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1776496813184-2" author="dimamarch">
+        <createTable tableName="outbox">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_outbox"/>
+            </column>
+            <column name="event_type" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="payload" type="jsonb">
+                <constraints nullable="false"/>
+            </column>
+            <column name="published_at" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="attempt_count" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="next_attempt_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_error" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1776496813184-3" author="dimamarch">
+        <createTable tableName="ownership_shares">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_ownership_shares"/>
+            </column>
+            <column name="coownership_listing_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="owner_id" type="UUID"/>
+            <column name="percentage" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="template_days_mask" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_locked" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1776496813184-4" author="dimamarch">
+        <createTable tableName="ownership_slots">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_ownership_slots"/>
+            </column>
+            <column name="period_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="owner_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_override" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1776496813184-5" author="dimamarch">
+        <createTable tableName="periods">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_periods"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="coownership_listing_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rental_listing_id" type="UUID"/>
+            <column name="start_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="end_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_income" type="DECIMAL(19, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1776496813184-6" author="dimamarch">
+        <createTable tableName="processed_events">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_processed_events"/>
+            </column>
+            <column name="event_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="consumer_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="processed_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1776496813184-7" author="dimamarch">
+        <createTable tableName="share_applications">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_share_applications"/>
+            </column>
+            <column name="coownership_listing_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="applicant_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1776496813184-8" author="dimamarch">
+        <addUniqueConstraint columnNames="event_id, consumer_name" constraintName="uc_454540c51d51ed11b3d299954"
+                             tableName="processed_events"/>
+    </changeSet>
+    <changeSet id="1776496813184-9" author="dimamarch">
+        <addUniqueConstraint columnNames="coownership_listing_id, applicant_id" constraintName="uc_shareapplication"
+                             tableName="share_applications"/>
+    </changeSet>
+    <changeSet id="1776496813184-10" author="dimamarch">
+        <addUniqueConstraint columnNames="period_id, date" constraintName="uc_slot_period_date"
+                             tableName="ownership_slots"/>
+    </changeSet>
+    <changeSet id="1776496813184-11" author="dimamarch">
+        <createIndex indexName="idx_outbox_unpublished" tableName="outbox">
+            <column name="published_at"/>
+            <column name="next_attempt_at"/>
+        </createIndex>
+    </changeSet>
+    <changeSet id="1776496813184-13" author="dimamarch">
+        <addForeignKeyConstraint baseColumnNames="coownership_listing_id" baseTableName="ownership_shares"
+                                 constraintName="FK_OWNERSHIP_SHARES_ON_COOWNERSHIP_LISTING" referencedColumnNames="id"
+                                 referencedTableName="coownership_listings"/>
+
+        <createIndex indexName="idx_ownershipshare" tableName="ownership_shares">
+            <column name="coownership_listing_id"/>
+        </createIndex>
+    </changeSet>
+    <changeSet id="1776496813184-14" author="dimamarch">
+        <addForeignKeyConstraint baseColumnNames="period_id" baseTableName="ownership_slots"
+                                 constraintName="FK_OWNERSHIP_SLOTS_ON_PERIOD" referencedColumnNames="id"
+                                 referencedTableName="periods"/>
+    </changeSet>
+    <changeSet id="1776496813184-15" author="dimamarch">
+        <addForeignKeyConstraint baseColumnNames="coownership_listing_id" baseTableName="periods"
+                                 constraintName="FK_PERIODS_ON_COOWNERSHIP_LISTING" referencedColumnNames="id"
+                                 referencedTableName="coownership_listings"/>
+    </changeSet>
+    <changeSet id="1776496813184-16" author="dimamarch">
+        <addForeignKeyConstraint baseColumnNames="coownership_listing_id" baseTableName="share_applications"
+                                 constraintName="FK_SHARE_APPLICATIONS_ON_COOWNERSHIP_LISTING"
+                                 referencedColumnNames="id" referencedTableName="coownership_listings"/>
+    </changeSet>
+
+    <changeSet id="1776496813184-17" author="dimamarch">
+        <sql>
+            ALTER TABLE coownership_listings
+            ADD CONSTRAINT chk_filled_not_exceed_total
+            CHECK (filled_shares &lt;= total_shares),
+            ADD CONSTRAINT chk_shares_positive
+            CHECK (total_shares &gt; 0 AND filled_shares &gt;= 0);
+
+            ALTER TABLE ownership_shares
+            ADD CONSTRAINT chk_percentage_range
+            CHECK (percentage BETWEEN 1 AND 99);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

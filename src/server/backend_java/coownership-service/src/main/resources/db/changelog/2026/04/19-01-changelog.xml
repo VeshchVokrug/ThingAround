@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-5.0.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+    <changeSet id="1776619109594-1" author="dimamarch">
+        <addColumn tableName="coownership_listings">
+            <column name="description" type="VARCHAR(1024)"/>
+            <column name="name" type="VARCHAR(128)"/>
+            <column name="price" type="DECIMAL(19, 2)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet id="1776619109594-3" author="dimamarch">
+        <addNotNullConstraint columnName="name" tableName="coownership_listings"/>
+    </changeSet>
+    <changeSet id="1776619109594-5" author="dimamarch">
+        <addNotNullConstraint columnName="price" tableName="coownership_listings"/>
+    </changeSet>
+    <changeSet id="1776619109594-6" author="dimamarch">
+        <addColumn tableName="share_applications">
+            <column name="shares_count" type="INT"/>
+        </addColumn>
+    </changeSet>
+    <changeSet id="1776619109594-7" author="dimamarch">
+        <addNotNullConstraint columnName="shares_count" tableName="share_applications"/>
+    </changeSet>
+
+</databaseChangeLog>
