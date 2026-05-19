@@ -1,10 +1,10 @@
 ﻿using Application.Exceptions;
 using Application.Services.Abstractions;
-using Catalog.Contracts.Auth;
 using Catalog.Contracts.DTO;
 using Catalog.Contracts.DTO.AvailableSlot;
 using Catalog.Contracts.DTO.Listing.Rental;
 using Catalog.Contracts.Repository.Abstractions;
+using Core.Auth;
 using Domain.Entity;
 using Microsoft.Extensions.Logging;
 using Slugify;

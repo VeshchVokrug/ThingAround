@@ -1,10 +1,10 @@
 ﻿using Application.Exceptions;
 using Application.Services;
-using Catalog.Contracts.Auth;
 using Catalog.Contracts.DTO;
 using Catalog.Contracts.DTO.AvailableSlot;
 using Catalog.Contracts.DTO.Listing.Rental;
 using Catalog.Contracts.Repository.Abstractions;
+using Core.Auth;
 using Core.Contracts;
 using Domain.Entity;
 using FluentAssertions;

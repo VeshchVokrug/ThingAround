@@ -1,8 +1,7 @@
 ﻿using System.Security.Claims;
-using Catalog.Contracts.Auth;
 using Microsoft.AspNetCore.Http;
 
-namespace Infrastructure.Auth;
+namespace Core.Auth;
 
 public class UserContext(IHttpContextAccessor accessor) : IUserContext
 {

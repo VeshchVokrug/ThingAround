@@ -1,4 +1,4 @@
-﻿namespace Catalog.Contracts.Auth;
+﻿namespace Core.Auth;
 
 public interface IUserContext
 {

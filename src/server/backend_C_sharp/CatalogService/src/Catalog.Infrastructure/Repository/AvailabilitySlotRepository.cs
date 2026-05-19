@@ -85,6 +85,18 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
             .ToListAsync(ct);
     }
 
+    public async Task<List<AvailabilitySlot>> GetSlotsAsync(Guid listingId, IEnumerable<DateOnly> dates, CancellationToken ct = default)
+    {
+        var datesList = dates
+            .Distinct()
+            .ToList();
+        
+        return await _context.AvailabilitySlots
+            .AsNoTracking()
+            .Where(s => s.ListingId == listingId && datesList.Contains(s.Date))
+            .ToListAsync(ct);
+    }
+
     public async Task<bool> TryReserveSlotsAsync(Guid listingId, IEnumerable<DateOnly> dates, Guid? bookingId = null, CancellationToken ct = default)
     {
         var datesList = dates
