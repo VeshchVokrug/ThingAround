@@ -4,7 +4,6 @@ public enum BookingStatus
 {
     Undefined,
     Created,
-    AwaitingConfirmation,
     PendingApproval,
     Confirmed,
     Rejected,

@@ -130,7 +130,7 @@ public class BookingRepositoryTests
         using var context = _fixture.CreateContext();
         await ResetDatabaseAsync(context);
 
-        var booking = CreateBooking(status: BookingStatus.AwaitingConfirmation, version: 1, cancellationReason: null);
+        var booking = CreateBooking(status: BookingStatus.Created, version: 1, cancellationReason: null);
         await context.Bookings.AddAsync(booking);
         await context.SaveChangesAsync();
 

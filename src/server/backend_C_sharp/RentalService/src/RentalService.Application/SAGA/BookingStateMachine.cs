@@ -23,6 +23,7 @@ public class BookingStateMachine : MassTransitStateMachine<BookingState>
     private Event<CatalogSlotsReservationFailedEvent> OnCatalogSlotsReservationFailed { get; set; } = null!;
     private Event<RentalBookingApprovedEvent> OnRentalBookingApproved { get;  set; } = null!;
     private Event<RentalBookingRejectedEvent> OnRentalBookingRejected { get; set; } = null!;
+    private Event<RentalBookingCancelledEvent> OnRentalBookingCancelled { get; set; } = null!;
     private Schedule<BookingState, RentalBookingExpiredEvent> OwnerApprovalExpired { get; set; } = null!;
     
     public BookingStateMachine(TimeProvider timeProvider, ILogger<BookingStateMachine> logger)
@@ -38,6 +39,7 @@ public class BookingStateMachine : MassTransitStateMachine<BookingState>
         Event(() => OnCatalogSlotsReservationFailed, x => x.CorrelateById(m => m.Message.BookingId));
         Event(() => OnRentalBookingApproved, x => x.CorrelateById(m => m.Message.BookingId));
         Event(() => OnRentalBookingRejected, x => x.CorrelateById(m => m.Message.BookingId));
+        Event(() => OnRentalBookingCancelled, x => x.CorrelateById(m => m.Message.BookingId));
         
         Schedule(() => OwnerApprovalExpired, x => x.BookingExpiredTokenId, x =>
         {
@@ -84,11 +86,21 @@ public class BookingStateMachine : MassTransitStateMachine<BookingState>
                 .ThenAsync(SendCatalogReleaseSlots)
                 .Unschedule(OwnerApprovalExpired)
                 .TransitionTo(Final),
-
+            
             When(OwnerApprovalExpired.Received)
                 .Then(LogSagaState)
                 .ThenAsync(context => UpdateBookingStatus(context, BookingStatus.Expired))
                 .ThenAsync(SendCatalogReleaseSlots)
+                .TransitionTo(Final)
+        );
+        
+        During(AwaitingCatalogReservation, AwaitingOwnerApproval,
+            When(OnRentalBookingCancelled)
+                .Then(LogSagaState)
+                .Then(context => context.Saga.FailureReason = context.Message.Reason)
+                .ThenAsync(context => UpdateBookingStatus(context, BookingStatus.Cancelled, context.Message.Reason))
+                .ThenAsync(SendCatalogReleaseSlots)
+                .Unschedule(OwnerApprovalExpired)
                 .TransitionTo(Final)
         );
         
@@ -106,7 +118,7 @@ public class BookingStateMachine : MassTransitStateMachine<BookingState>
         context.Saga.TotalPrice = context.Message.ExpectedPrice;
         context.Saga.Status = BookingStatus.Created;
         context.Saga.BookingVersion = 1;
-        context.Saga.CreatedAt = _timeProvider.GetUtcNow().UtcDateTime;
+        context.Saga.CreatedAt = _timeProvider.GetUtcNow();
     }
 
     private async Task CreateBookingInDb(BehaviorContext<BookingState, RentalBookingRequestedEvent> context)
@@ -123,7 +135,8 @@ public class BookingStateMachine : MassTransitStateMachine<BookingState>
             StartDate = context.Saga.StartDate,
             EndDate = context.Saga.EndDate,
             TotalPrice = context.Saga.TotalPrice,
-            CreatedAt = context.Saga.CreatedAt
+            CreatedAt = context.Saga.CreatedAt,
+            Version = context.Saga.BookingVersion
         };
         await bookingRepository.AddAsync(booking);
     }
@@ -163,7 +176,6 @@ public class BookingStateMachine : MassTransitStateMachine<BookingState>
         if (!updated)
         {
             throw new Exception($"Failed to update booking {context.Saga.CorrelationId} in DB.");
-            
         }
         context.Saga.BookingVersion++;
     }

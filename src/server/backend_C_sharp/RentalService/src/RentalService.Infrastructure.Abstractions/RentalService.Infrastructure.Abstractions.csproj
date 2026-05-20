@@ -9,5 +9,4 @@
     <ItemGroup>
       <ProjectReference Include="..\RentalService.Domain\RentalService.Domain.csproj" />
     </ItemGroup>
-
 </Project>

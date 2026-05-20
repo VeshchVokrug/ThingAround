@@ -33,8 +33,4 @@
         <ProjectReference Include="..\..\src\RentalService.Infrastructure.Abstractions\RentalService.Infrastructure.Abstractions.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="IntegrationTests\Application\" />
-    </ItemGroup>
-
 </Project>
