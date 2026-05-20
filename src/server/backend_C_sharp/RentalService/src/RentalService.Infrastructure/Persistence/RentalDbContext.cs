@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using MassTransit;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RentalService.Application.SAGA;
 using RentalService.Domain.Entity;
@@ -20,6 +21,11 @@ public class RentalDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasPostgresExtension("btree_gist");
+        
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
+        
         ConfigureBookings(modelBuilder.Entity<Booking>());
         modelBuilder.ApplyConfiguration(new BookingStateConfiguration());
         

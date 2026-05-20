@@ -1,6 +1,57 @@
 ﻿version: '3.8'
 
 services:
+  kafka:
+    image: confluentinc/cp-kafka:7.5.13
+    container_name: kafka
+    ports:
+      - "29092:29092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:29092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092,PLAINTEXT_HOST://127.0.0.1:29092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    networks:
+      - thingaround-network
+    command:
+      - /bin/bash
+      - -c
+      - |
+        (
+          echo "Waiting for Kafka to be ready..."
+          while ! nc -z localhost 9092; do
+            sleep 1
+          done
+          echo "Kafka is reachable! Creating topics..."
+          kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic rental-events --partitions 1 --replication-factor 1
+          kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic catalog-events --partitions 1 --replication-factor 1
+          kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic catalog-commands --partitions 1 --replication-factor 1
+          echo "All topics created successfully!"
+        ) &
+        exec /etc/confluent/docker/run
+  
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    container_name: kafdrop
+    depends_on:
+      - kafka
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: kafka:9092
+    networks:
+      - thingaround-network
+  
   db:
     image: postgres:17-alpine
     container_name: database

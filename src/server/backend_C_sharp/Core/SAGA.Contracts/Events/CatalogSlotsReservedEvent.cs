@@ -1,4 +1,4 @@
 ﻿namespace Core.SAGA.Contracts.Events;
 
 public record CatalogSlotsReservedEvent(
-    Guid BookingId);
+    Guid BookingId) : ICatalogEvents;

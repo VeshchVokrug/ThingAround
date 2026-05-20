@@ -21,6 +21,14 @@ public static class InfrastructureExtensions
 
     public static IServiceCollection ConfigureMassTransit(this IServiceCollection services, IConfiguration configuration)
     {
+        var kafkaSection = configuration.GetSection("Kafka");
+        var bootstrap = kafkaSection["BootstrapServers"] ?? throw new NullReferenceException("Kafka host 'BootstrapServers' not found in configuration 'Kafka'.");
+        var sagaGroup = kafkaSection["GroupId"] ?? throw new NullReferenceException("'GroupId' not found in configuration 'Kafka'.");
+        var topics = kafkaSection.GetSection("Topics");
+        var rentalTopic = topics["RentalEventsTopic"] ?? throw new NullReferenceException("'RentalEventsTopic' not found in configuration 'Kafka'.");
+        var catalogEventsTopic = topics["CatalogEventsTopic"] ?? throw new NullReferenceException("'CatalogEventsTopic' not found in configuration 'Kafka'.");
+        var catalogCommandsTopic = topics["CatalogCommandsTopic"] ?? throw new NullReferenceException("'CatalogCommandsTopic' not found in configuration 'Kafka'.");
+        
         services.AddMassTransit(cfg =>
         {
             cfg.SetKebabCaseEndpointNameFormatter();
@@ -47,35 +55,20 @@ public static class InfrastructureExtensions
             
             cfg.AddRider(rider =>
             {
-                rider.AddProducer<Guid, CatalogReserveSlots>("catalog-commands");
-                rider.AddProducer<Guid, CatalogReleaseSlots>("catalog-commands");
+                rider.AddSagaStateMachine<BookingStateMachine, BookingState>();
+                
+                rider.AddProducer<Guid, ICatalogCommands>(catalogCommandsTopic);
 
                 rider.UsingKafka((context, kafka) =>
                 {
-                    var bootstrap = configuration.GetValue<string>("Kafka:BootstrapServers") ?? "localhost:9092";
                     kafka.Host(bootstrap);
 
-                    kafka.TopicEndpoint<Guid, RentalBookingRequestedEvent>("rental-events", "rental-booking-saga", e =>
+                    kafka.TopicEndpoint<Guid, IRentalEvents>(rentalTopic, sagaGroup, e =>
                     {
                         e.ConfigureSaga<BookingState>(context);
                     });
                     
-                    kafka.TopicEndpoint<Guid, RentalBookingApprovedEvent>("rental-events", "rental-booking-saga", e =>
-                    {
-                        e.ConfigureSaga<BookingState>(context);
-                    });
-                    
-                    kafka.TopicEndpoint<Guid, RentalBookingRejectedEvent>("rental-events", "rental-booking-saga", e =>
-                    {
-                        e.ConfigureSaga<BookingState>(context);
-                    });
-                    
-                    kafka.TopicEndpoint<Guid, CatalogSlotsReservationFailedEvent>("catalog-events", "rental-booking-saga", e =>
-                    {
-                        e.ConfigureSaga<BookingState>(context);
-                    });
-                    
-                    kafka.TopicEndpoint<Guid, CatalogSlotsReservedEvent>("catalog-events", "rental-booking-saga", e =>
+                    kafka.TopicEndpoint<Guid, ICatalogEvents>(catalogEventsTopic, sagaGroup, e =>
                     {
                         e.ConfigureSaga<BookingState>(context);
                     });

@@ -3,4 +3,4 @@
 public record RentalBookingRejectedEvent(
     Guid BookingId,
     Guid OwnerId,
-    string Reason);
+    string Reason) : IRentalEvents;

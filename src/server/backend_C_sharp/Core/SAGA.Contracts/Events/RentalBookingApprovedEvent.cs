@@ -2,4 +2,4 @@
 
 public record RentalBookingApprovedEvent(
     Guid BookingId,
-    Guid OwnerId);
+    Guid OwnerId) : IRentalEvents;

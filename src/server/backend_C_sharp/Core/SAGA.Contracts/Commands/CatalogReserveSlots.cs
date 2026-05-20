@@ -3,4 +3,4 @@
 public record CatalogReserveSlots(
     Guid BookingId,
     Guid ListingId,
-    IEnumerable<DateOnly> Dates);
+    IEnumerable<DateOnly> Dates) : ICatalogCommands;

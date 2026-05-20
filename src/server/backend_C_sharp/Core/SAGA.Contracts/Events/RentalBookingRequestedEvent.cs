@@ -7,4 +7,4 @@ public record RentalBookingRequestedEvent(
     Guid OwnerId,
     DateOnly StartDate,
     DateOnly EndDate,
-    decimal ExpectedPrice);
+    decimal ExpectedPrice) : IRentalEvents;
