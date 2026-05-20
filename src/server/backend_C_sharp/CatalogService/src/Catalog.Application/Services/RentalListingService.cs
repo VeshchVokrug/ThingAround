@@ -1,4 +1,5 @@
-﻿using Application.Exceptions;
+﻿using System.Security.Authentication;
+using Application.Exceptions;
 using Application.Services.Abstractions;
 using Catalog.Contracts.DTO;
 using Catalog.Contracts.DTO.AvailableSlot;
@@ -68,7 +69,7 @@ public class RentalListingService : IRentalListingService
     {
         if (_userContext.UserId == Guid.Empty)
         {
-            throw new Exception("User id is empty.");
+            throw new AuthenticationException("User id is empty.");
         }
         
         var listing = new RentalListing

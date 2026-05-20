@@ -1,4 +1,5 @@
-﻿using Core.SAGA.Contracts.Events;
+﻿using Core.Auth;
+using Core.SAGA.Contracts.Events;
 using FluentAssertions;
 using MassTransit;
 using MassTransit.Testing;
@@ -49,6 +50,7 @@ public class BookingServiceIntegrationTests : IAsyncLifetime
         services.AddScoped<IBookingRepository, BookingRepository>();
         services.AddScoped<IBookingStatesRepository, BookingStatesRepository>();
         services.AddScoped<IBookingService, BookingService>();
+        services.AddScoped<IUserContext, TestUserContext>();
         services.AddSingleton<TimeProvider>(_fakeTime);
 
         services.AddLogging(logging =>
@@ -94,14 +96,17 @@ public class BookingServiceIntegrationTests : IAsyncLifetime
     public async Task CreateAsync_ShouldReturnBookingId_WhenPendingApprovalReached()
     {
         var dto = CreateDto();
+        var tenantId = Guid.NewGuid();
 
         using var scope = _provider.CreateScope();
+        var userContext = (TestUserContext)scope.ServiceProvider.GetRequiredService<IUserContext>();
+        userContext.UserId = tenantId;
         var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var createTask = bookingService.CreateAsync(dto, cts.Token);
 
-        var bookingId = await WaitForBookingStateIdAsync(dto, cts.Token);
+        var bookingId = await WaitForBookingStateIdAsync(dto, tenantId, cts.Token);
         await _harness.Bus.Publish(new CatalogSlotsReservedEvent(bookingId), cts.Token);
 
         var response = await createTask;
@@ -120,10 +125,12 @@ public class BookingServiceIntegrationTests : IAsyncLifetime
         await SeedPendingApprovalAsync(bookingId, ownerId, tenantId);
 
         using var scope = _provider.CreateScope();
+        var userContext = (TestUserContext)scope.ServiceProvider.GetRequiredService<IUserContext>();
+        userContext.UserId = ownerId;
         var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var response = await bookingService.ApproveBookingAsync(bookingId, ownerId, cts.Token);
+        var response = await bookingService.ApproveBookingAsync(bookingId, cts.Token);
 
         response.Success.Should().BeTrue();
         await VerifyBookingStatusAsync(bookingId, BookingStatus.Confirmed);
@@ -139,10 +146,12 @@ public class BookingServiceIntegrationTests : IAsyncLifetime
         await SeedPendingApprovalAsync(bookingId, ownerId, tenantId);
 
         using var scope = _provider.CreateScope();
+        var userContext = (TestUserContext)scope.ServiceProvider.GetRequiredService<IUserContext>();
+        userContext.UserId = ownerId;
         var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var response = await bookingService.RejectBookingAsync(bookingId, ownerId, "Price too low", cts.Token);
+        var response = await bookingService.RejectBookingAsync(bookingId, "Price too low", cts.Token);
 
         response.Success.Should().BeTrue();
         await VerifyBookingStatusAsync(bookingId, BookingStatus.Rejected);
@@ -158,10 +167,12 @@ public class BookingServiceIntegrationTests : IAsyncLifetime
         await SeedPendingApprovalAsync(bookingId, ownerId, tenantId);
 
         using var scope = _provider.CreateScope();
+        var userContext = (TestUserContext)scope.ServiceProvider.GetRequiredService<IUserContext>();
+        userContext.UserId = tenantId;
         var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var response = await bookingService.CancelBookingAsync(bookingId, tenantId, "Change of plans", cts.Token);
+        var response = await bookingService.CancelBookingAsync(bookingId, "Change of plans", cts.Token);
 
         response.Success.Should().BeTrue();
         await VerifyBookingStatusAsync(bookingId, BookingStatus.Cancelled);
@@ -188,12 +199,11 @@ public class BookingServiceIntegrationTests : IAsyncLifetime
     private CreateBookingDto CreateDto() => new(
         Guid.NewGuid(),
         Guid.NewGuid(),
-        Guid.NewGuid(),
         new DateOnly(2025, 10, 1),
         new DateOnly(2025, 10, 5),
         1000m);
 
-    private async Task<Guid> WaitForBookingStateIdAsync(CreateBookingDto dto, CancellationToken ct)
+    private async Task<Guid> WaitForBookingStateIdAsync(CreateBookingDto dto, Guid tenantId, CancellationToken ct)
     {
         Guid? bookingId = null;
         var success = await SpinWait(async () =>
@@ -202,7 +212,7 @@ public class BookingServiceIntegrationTests : IAsyncLifetime
             var db = scope.ServiceProvider.GetRequiredService<RentalDbContext>();
             var state = await db.BookingStates.AsNoTracking()
                 .FirstOrDefaultAsync(x => x.ListingId == dto.ListingId
-                                          && x.TenantId == dto.TenantId
+                                          && x.TenantId == tenantId
                                           && x.OwnerId == dto.OwnerId
                                           && x.StartDate == dto.StartDate
                                           && x.EndDate == dto.EndDate, ct);
@@ -257,5 +267,12 @@ public class BookingServiceIntegrationTests : IAsyncLifetime
     {
         await _harness.Stop();
         await _provider.DisposeAsync();
+    }
+
+    private sealed class TestUserContext : IUserContext
+    {
+        public Guid UserId { get; set; }
+        public string Role { get; set; } = "User";
+        public bool IsAdmin => Role.Equals("Admin", StringComparison.OrdinalIgnoreCase);
     }
 }

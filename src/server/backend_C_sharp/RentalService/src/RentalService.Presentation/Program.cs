@@ -1,12 +1,17 @@
 using Core.Auth;
 using Core.Caching;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using RentalService.Infrastructure;
 using RentalService.Infrastructure.Persistence;
 using RentalService.Infrastructure.Persistence.Initializer;
+using RentalService.Presentation.Interceptors;
 using Serilog;
 using Serilog.Enrichers.Span;
 using Serilog.Events;
+using RentalService.Application;
+using RentalService.Presentation.gRPC;
+using RentalService.Presentation.Validators;
 
 namespace RentalService.Presentation;
 
@@ -27,15 +32,26 @@ public static class Program
         
         await DbInitializer.InitializeAsync(app.Services);
         
+        app.MapGrpcService<GrpcRentalService>();
+        
         await app.RunAsync();
     }
     
     private static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddInfrastructure();
+        services.AddApplication();
         services.AddSingleton(TimeProvider.System);
         services.AddHttpContextAccessor();
         services.AddScoped<IUserContext, UserContext>();
+        
+        services.AddValidatorsFromAssemblyContaining<CalendarDateValidator>();
+        services.AddGrpc(options =>
+        {
+            options.Interceptors.Add<ExceptionInterceptor>();
+            options.Interceptors.Add<ValidationInterceptor>();
+            options.Interceptors.Add<UserHeaderInterceptor>();
+        });
     }
     
     private static void ConfigureInfrastructure(IServiceCollection services, IConfiguration configuration)

@@ -1,11 +1,10 @@
 ﻿using System.Security.Authentication;
-using Application.Exceptions;
 using FluentValidation;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
-using Microsoft.Extensions.Logging;
+using RentalService.Application.Exceptions;
 
-namespace Presentation.Interceptors;
+namespace RentalService.Presentation.Interceptors;
 
 public class ExceptionInterceptor : Interceptor
 {
@@ -43,8 +42,7 @@ public class ExceptionInterceptor : Interceptor
             ValidationException validationException => new RpcException(new Status(StatusCode.InvalidArgument, validationException.Message)),
             ArgumentException argumentException => new RpcException(new Status(StatusCode.InvalidArgument, argumentException.Message)),
             ForbiddenOrNotFoundException => new RpcException(new Status(StatusCode.NotFound, exception.Message)),
-            AvailabilityConflictException => new RpcException(new Status(StatusCode.FailedPrecondition, exception.Message)),
-            OptimisticConcurrencyException => new RpcException(new Status(StatusCode.Aborted, exception.Message)),
+            TimeoutException => new RpcException(new Status(StatusCode.Aborted, exception.Message)),
             AuthenticationException => new RpcException(new Status(StatusCode.Unauthenticated, exception.Message)),
             RpcException rpcEx => rpcEx,
             _ => new RpcException(new Status(StatusCode.Internal, "An internal server error occurred"))

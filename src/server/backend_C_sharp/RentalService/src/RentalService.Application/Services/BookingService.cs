@@ -1,4 +1,6 @@
-﻿using Core.SAGA.Contracts.Events;
+﻿using System.Security.Authentication;
+using Core.Auth;
+using Core.SAGA.Contracts.Events;
 using MassTransit;
 using RentalService.Application.DTO;
 using RentalService.Application.Exceptions;
@@ -14,22 +16,29 @@ public class BookingService : IBookingService
     private readonly IBookingRepository _bookingRepository;
     private readonly IBookingStatesRepository _bookingStatesRepository;
     private readonly IPublishEndpoint _publishEndpoint;
+    private readonly IUserContext _userContext;
     
-    public BookingService(IBookingRepository bookingRepository, IPublishEndpoint publishEndpoint, IBookingStatesRepository bookingStatesRepository)
+    public BookingService(IBookingRepository bookingRepository, IPublishEndpoint publishEndpoint, IBookingStatesRepository bookingStatesRepository, IUserContext userContext)
     {
         _bookingRepository = bookingRepository;
         _publishEndpoint = publishEndpoint;
         _bookingStatesRepository = bookingStatesRepository;
+        _userContext = userContext;
     }
 
     public async Task<CreatingBookingResponse> CreateAsync(CreateBookingDto dto, CancellationToken ct)
     {
+        if (_userContext.UserId == Guid.Empty)
+        {
+            throw new AuthenticationException("User id is empty.");
+        }       
+        
         var bookingId = Guid.NewGuid();
         
         var @event = new RentalBookingRequestedEvent(
             bookingId,
             dto.ListingId,
-            dto.TenantId,
+            _userContext.UserId,
             dto.OwnerId,
             dto.StartDate,
             dto.EndDate,
@@ -56,11 +65,16 @@ public class BookingService : IBookingService
         throw new TimeoutException("Booking not created.");
     }
 
-    public async Task<BookingDto?> GetAsync(Guid id)
+    public async Task<BookingDto> GetAsync(Guid id)
     {
         var booking = await _bookingRepository.GetAsync(id);
 
-        return booking?.ToDto();
+        if (booking == null)
+        {
+            throw new ForbiddenOrNotFoundException("Заявка на бронь", id);
+        }
+        
+        return booking.ToDto();
     }
 
     public async Task<List<BookingDto>> GetAllByTenantAsync(Guid tenantId)
@@ -77,8 +91,15 @@ public class BookingService : IBookingService
         return bookings.Select(x => x.ToDto()).ToList();
     }
 
-    public async Task<ApprovalBookingResponse> ApproveBookingAsync(Guid bookingId, Guid ownerId, CancellationToken ct)
+    public async Task<ApprovalBookingResponse> ApproveBookingAsync(Guid bookingId, CancellationToken ct)
     {
+        if (_userContext.UserId == Guid.Empty)
+        {
+            throw new AuthenticationException("User id is empty.");
+        }   
+        
+        var ownerId = _userContext.UserId;
+        
         await EnsureCanProcessAction(bookingId, ownerId);
         
         await _publishEndpoint.Publish(new RentalBookingApprovedEvent(bookingId, ownerId), ct);
@@ -86,8 +107,15 @@ public class BookingService : IBookingService
         return await WaitForStatusChange(bookingId, BookingStatus.Confirmed, ct);
     }
 
-    public async Task<ApprovalBookingResponse> RejectBookingAsync(Guid bookingId, Guid ownerId, string reason, CancellationToken ct)
+    public async Task<ApprovalBookingResponse> RejectBookingAsync(Guid bookingId, string reason, CancellationToken ct)
     {
+        if (_userContext.UserId == Guid.Empty)
+        {
+            throw new AuthenticationException("User id is empty.");
+        }   
+        
+        var ownerId = _userContext.UserId;
+        
         await EnsureCanProcessAction(bookingId, ownerId);
         
         await _publishEndpoint.Publish(new RentalBookingRejectedEvent(bookingId, ownerId, reason), ct);
@@ -95,8 +123,15 @@ public class BookingService : IBookingService
         return await WaitForStatusChange(bookingId, BookingStatus.Rejected, ct);
     }
 
-    public async Task<ApprovalBookingResponse> CancelBookingAsync(Guid bookingId, Guid tenantId, string reason, CancellationToken ct = default)
+    public async Task<ApprovalBookingResponse> CancelBookingAsync(Guid bookingId, string reason, CancellationToken ct = default)
     {
+        if (_userContext.UserId == Guid.Empty)
+        {
+            throw new AuthenticationException("User id is empty.");
+        }   
+        
+        var tenantId = _userContext.UserId;
+        
         var booking = await _bookingRepository.GetAsync(bookingId);
 
         if (booking == null || booking.TenantId != tenantId)

@@ -19,6 +19,7 @@
     <ItemGroup>
         <Protobuf Include="IdentityProfileService.proto" GrpcServices="Both" />
         <Protobuf Include="CatalogService.proto" GrpcServices="Both" />
+        <Protobuf Include="RentalService.proto" GrpcServices="Both" />
     </ItemGroup>
     
 </Project>

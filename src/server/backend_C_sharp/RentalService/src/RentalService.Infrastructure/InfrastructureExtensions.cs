@@ -15,6 +15,7 @@ public static class InfrastructureExtensions
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<IBookingRepository, BookingRepository>();
+        services.AddScoped<IBookingStatesRepository, BookingStatesRepository>();
 
         return services;
     }
