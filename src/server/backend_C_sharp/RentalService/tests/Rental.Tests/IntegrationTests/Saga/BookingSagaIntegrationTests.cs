@@ -73,6 +73,14 @@ public class BookingSagaIntegrationTests : IAsyncLifetime
         });
 
         _provider = services.BuildServiceProvider(true);
+
+        using (var scope = _provider.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RentalDbContext>();
+            await db.Database.EnsureDeletedAsync();
+            await db.Database.EnsureCreatedAsync(); 
+        }
+        
         _harness = _provider.GetRequiredService<ITestHarness>();
         _sagaHarness = _harness.GetSagaStateMachineHarness<BookingStateMachine, BookingState>();
 
@@ -208,7 +216,6 @@ public class BookingSagaIntegrationTests : IAsyncLifetime
     private async Task ResetDatabaseAsync()
     {
         await using var db = _fixture.CreateContext();
-        await db.BookingStates.ExecuteDeleteAsync();
         await db.Bookings.ExecuteDeleteAsync();
     }
 

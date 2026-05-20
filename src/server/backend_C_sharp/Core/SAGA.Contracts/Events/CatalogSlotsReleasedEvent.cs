@@ -1,4 +1,4 @@
 ﻿namespace Core.SAGA.Contracts.Events;
 
-public record CatalogSlotReleasedEvent(
+public record CatalogSlotsReleasedEvent(
     Guid BookingId);

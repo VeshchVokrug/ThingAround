@@ -55,8 +55,22 @@ public static class InfrastructureExtensions
                     var bootstrap = configuration.GetValue<string>("Kafka:BootstrapServers") ?? "localhost:9092";
                     kafka.Host(bootstrap);
 
-
                     kafka.TopicEndpoint<Guid, RentalBookingRequestedEvent>("rental-events", "rental-booking-saga", e =>
+                    {
+                        e.ConfigureSaga<BookingState>(context);
+                    });
+                    
+                    kafka.TopicEndpoint<Guid, RentalBookingApprovedEvent>("rental-events", "rental-booking-saga", e =>
+                    {
+                        e.ConfigureSaga<BookingState>(context);
+                    });
+                    
+                    kafka.TopicEndpoint<Guid, RentalBookingRejectedEvent>("rental-events", "rental-booking-saga", e =>
+                    {
+                        e.ConfigureSaga<BookingState>(context);
+                    });
+                    
+                    kafka.TopicEndpoint<Guid, CatalogSlotsReservationFailedEvent>("catalog-events", "rental-booking-saga", e =>
                     {
                         e.ConfigureSaga<BookingState>(context);
                     });
