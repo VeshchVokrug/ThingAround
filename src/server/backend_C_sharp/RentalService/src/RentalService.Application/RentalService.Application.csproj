@@ -7,7 +7,14 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="Services\" />
+      <PackageReference Include="MassTransit" Version="9.1.1" />
+      <PackageReference Include="MassTransit.Abstractions" Version="9.1.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\Core\Core.csproj" />
+      <ProjectReference Include="..\RentalService.Domain\RentalService.Domain.csproj" />
+      <ProjectReference Include="..\RentalService.Infrastructure.Abstractions\RentalService.Infrastructure.Abstractions.csproj" />
     </ItemGroup>
 
 </Project>

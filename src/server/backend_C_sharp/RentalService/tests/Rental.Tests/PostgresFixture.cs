@@ -12,7 +12,7 @@ public class PostgresFixture : IAsyncLifetime
         .WithPassword("test_pass")
         .Build();
 
-    private string ConnectionString => _container.GetConnectionString();
+    public string ConnectionString => _container.GetConnectionString();
 
     public RentalDbContext CreateContext()
     {
@@ -51,4 +51,3 @@ public class PostgresFixture : IAsyncLifetime
 public class PostgresCollection : ICollectionFixture<PostgresFixture>
 {
 }
-

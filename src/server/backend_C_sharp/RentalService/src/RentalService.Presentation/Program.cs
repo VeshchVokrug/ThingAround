@@ -1,11 +1,9 @@
-
 using Core.Auth;
 using Core.Caching;
 using Microsoft.EntityFrameworkCore;
-using RentalService.Infrastructure.Abstractions.Repository.Abstractions;
+using RentalService.Infrastructure;
 using RentalService.Infrastructure.Persistence;
 using RentalService.Infrastructure.Persistence.Initializer;
-using RentalService.Infrastructure.Repository;
 using Serilog;
 using Serilog.Enrichers.Span;
 using Serilog.Events;
@@ -23,7 +21,7 @@ public static class Program
         builder.Host.UseSerilog();
         
         ConfigureInfrastructure(builder.Services, builder.Configuration);
-        ConfigureServices(builder.Services);        
+        ConfigureServices(builder.Services, builder.Configuration);        
         
         var app = builder.Build();
         
@@ -32,7 +30,7 @@ public static class Program
         await app.RunAsync();
     }
     
-    private static void ConfigureServices(IServiceCollection services)
+    private static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddInfrastructure();
         services.AddSingleton(TimeProvider.System);
@@ -66,6 +64,8 @@ public static class Program
             
             options.InstancePrefix = configuration.GetValue<string>("RedisOptions:InstancePrefix") ?? "Rental";
         });
+
+        services.ConfigureMassTransit(configuration);
     }
     
     private static void ConfigureLogging()
@@ -78,15 +78,5 @@ public static class Program
             .WriteTo.Console(outputTemplate: 
                 "[{Timestamp:HH:mm:ss} {Level:u3}] [{TraceId}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
-    }
-
-    extension(IServiceCollection services)
-    {
-        private IServiceCollection AddInfrastructure()
-        {
-            services.AddScoped<IBookingRepository, BookingRepository>();
-        
-            return services;
-        }
     }
 }
