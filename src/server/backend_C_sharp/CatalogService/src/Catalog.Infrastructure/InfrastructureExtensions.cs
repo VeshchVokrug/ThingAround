@@ -1,6 +1,7 @@
 ﻿using Catalog.Contracts.Repository.Abstractions;
 using Core.SAGA.Contracts.Commands;
 using Core.SAGA.Contracts.Events;
+using Infrastructure.BackgroundWorkers;
 using Infrastructure.Consumers;
 using Infrastructure.Persistence;
 using Infrastructure.Repository;
@@ -16,6 +17,9 @@ public static class InfrastructureExtensions
     {
         services.AddScoped<IAvailabilitySlotRepository, AvailabilitySlotRepository>();
         services.AddScoped<IRentalListingRepository, RentalListingRepository>();
+        services.AddScoped<IListingQueryRepository, ListingQueryRepository>();
+        
+        services.AddHostedService<DailyAvailabilitySlotsWorker>();
         
         return services;
     }

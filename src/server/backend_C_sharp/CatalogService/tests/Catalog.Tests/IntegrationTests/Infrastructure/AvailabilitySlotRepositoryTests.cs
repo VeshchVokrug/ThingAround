@@ -34,7 +34,7 @@ public class AvailabilitySlotRepositoryTests
         await SeedListingAsync(context, listingId);
 
         // Act
-        await sut.CreateAsync(listingId, 500, date);
+        await sut.CreateRangeAsync(listingId, 500, new List<DateOnly> { date });
         await sut.SaveChangesAsync();
 
         // Assert
@@ -301,7 +301,7 @@ public class AvailabilitySlotRepositoryTests
         await context.SaveChangesAsync();
 
         // Act
-        var count = await sut.RemoveAsync(listingId, date);
+        var count = await sut.RemoveRangeAsync(listingId, new List<DateOnly> { date });
         await sut.SaveChangesAsync();
 
         // Assert
