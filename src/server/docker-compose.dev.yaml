@@ -1,56 +1,24 @@
 ﻿version: '3.8'
 
 services:
-  kafka:
-    image: confluentinc/cp-kafka:7.5.13
-    container_name: kafka
+  rabbitmq:
+    image: heidiks/rabbitmq-delayed-message-exchange:4.2.0-management
+    container_name: rabbitmq
     ports:
-      - "29092:29092"
+      - "5672:5672"
+      - "15672:15672"
     environment:
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: 'broker,controller'
-      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
-      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:29092'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092,PLAINTEXT_HOST://127.0.0.1:29092'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
-      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
-      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin
+    volumes:
+      - ./RabbitMq/Data:/var/lib/rabbitmq
     networks:
       - thingaround-network
-    command:
-      - /bin/bash
-      - -c
-      - |
-        (
-          echo "Waiting for Kafka to be ready..."
-          while ! nc -z localhost 9092; do
-            sleep 1
-          done
-          echo "Kafka is reachable! Creating topics..."
-          kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic rental-events --partitions 1 --replication-factor 1
-          kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic catalog-events --partitions 1 --replication-factor 1
-          kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic catalog-commands --partitions 1 --replication-factor 1
-          echo "All topics created successfully!"
-        ) &
-        exec /etc/confluent/docker/run
-  
-  kafdrop:
-    image: obsidiandynamics/kafdrop
-    container_name: kafdrop
-    depends_on:
-      - kafka
-    ports:
-      - "9000:9000"
-    environment:
-      KAFKA_BROKERCONNECT: kafka:9092
-    networks:
-      - thingaround-network
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   
   db:
     image: postgres:17-alpine
@@ -99,6 +67,7 @@ services:
     container_name: identity_profile_service
     ports:
       - "5000:8080"
+    restart: always
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - Kestrel__Endpoints__gRPC__Url=http://*:8080
@@ -120,11 +89,13 @@ services:
     container_name: gateway
     ports:
       - "8080:8080"
+    restart: always
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
       - GrpcEndpoints__IdentityProfileService=http://identity-profile:8080
       - GrpcEndpoints__CatalogService=http://catalog:8080
+      - GrpcEndpoints__RentalService=http://rental:8080
       - ConnectionStrings__Redis=redis:6379,abortConnect=false
       - Jwt__Issuer=ThingAround.IdentityServer
       - Jwt__Audience=ThingAround.Client
@@ -135,6 +106,8 @@ services:
     depends_on:
       - identity-profile
       - redis
+      - catalog
+      - rental
 
   catalog:
     build:
@@ -143,17 +116,57 @@ services:
     container_name: catalog_service
     ports:
       - "5001:8080"
+    restart: always
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - Kestrel__Endpoints__gRPC__Url=http://*:8080
+    
       - ConnectionStrings__PostgresConnectionString=Host=db;Port=5432;Database=catalog_db;Username=admin;Password=admin
       - ConnectionStrings__Redis=redis:6379,abortConnect=false
+      
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=admin
+      - RabbitMQ__Password=admin
+      - RabbitMQ__Exchanges__CatalogEventsExchange=catalog-events
+      - RabbitMQ__Exchanges__CatalogCommandsExchange=catalog-commands
+      - RabbitMQ__Queues__CatalogServiceQueue=catalog-service
     networks:
       - thingaround-network
     depends_on:
       - db
       - redis
+      - rabbitmq
     
+  rental:
+    build:
+      context: .
+      dockerfile: backend_C_sharp/RentalService/Dockerfile
+    container_name: rental_service
+    ports:
+      - "5002:8080"
+    restart: always
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Kestrel__Endpoints__gRPC__Url=http://*:8080
+      
+      - ConnectionStrings__PostgresConnectionString=Host=db;Port=5432;Database=rental_db;Username=admin;Password=admin
+      - ConnectionStrings__Redis=redis:6379,abortConnect=false
+      
+      - RedisOptions__InstancePrefix=Rental
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=admin
+      - RabbitMQ__Password=admin
+      - RabbitMQ__Exchanges__RentalEventsExchange=rental-events
+      - RabbitMQ__Exchanges__CatalogEventsExchange=catalog-events
+      - RabbitMQ__Exchanges__CatalogCommandsExchange=catalog-commands
+      - RabbitMQ__Queues__RentalServiceQueue=rental-service
+    networks:
+      - thingaround-network
+    depends_on:
+      - db
+      - redis
+      - rabbitmq
+  
 networks:
   thingaround-network:
     driver: bridge

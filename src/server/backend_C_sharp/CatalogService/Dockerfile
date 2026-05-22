@@ -27,4 +27,3 @@ EXPOSE 8081
 COPY --from=build /app/publish .
 
 ENTRYPOINT ["dotnet", "Catalog.Presentation.dll"]
-

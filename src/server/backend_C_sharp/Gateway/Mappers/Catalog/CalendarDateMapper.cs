@@ -1,11 +1,11 @@
-﻿using CalendarDateDto = Gateway.Models.CalendarDate;
+﻿using Gateway.Models;
 using CalendarDateGrpc = CatalogService.Grpc.CalendarDate;
 
 namespace Gateway.Mappers.Catalog;
 
 public static class CalendarDateMapper
 {
-    public static CalendarDateGrpc ToGrpc(this CalendarDateDto source)
+    public static CalendarDateGrpc ToGrpc(this CatalogCalendarDateDto source)
     {
         return new CalendarDateGrpc
         {
@@ -15,9 +15,9 @@ public static class CalendarDateMapper
         };
     }
 
-    public static CalendarDateDto ToDto(this CalendarDateGrpc source)
+    public static CatalogCalendarDateDto ToDto(this CalendarDateGrpc source)
     {
-        return new CalendarDateDto
+        return new CatalogCalendarDateDto
         {
             Year = source.Year,
             Month = source.Month,

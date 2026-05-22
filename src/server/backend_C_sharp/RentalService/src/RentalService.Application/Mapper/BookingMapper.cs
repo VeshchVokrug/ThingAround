@@ -16,6 +16,7 @@ public static class BookingMapper
             StartDate = booking.StartDate,
             EndDate = booking.EndDate,
             TotalPrice = booking.TotalPrice,
+            Status = booking.Status.ToString(),
             Version = booking.Version,
             CancellationReason = booking.CancellationReason,
             CreatedAt = booking.CreatedAt,

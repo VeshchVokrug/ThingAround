@@ -91,6 +91,85 @@ public class RentalListingRepositoryTests
     }
 
     [Fact]
+    public async Task GetActivityStatusAsync_WhenListingIsActive_ShouldReturnTrue()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
+        var sut = CreateRepository(context);
+
+        var listingId = Guid.NewGuid();
+        // Используем вспомогательный метод, чтобы не ловить ошибки NOT NULL в БД
+        var listing = CreateListing(
+            title: "Active Item", 
+            desc: "Description", 
+            catSlug: "test", 
+            city: "TestCity", 
+            price: 1000, 
+            rating: 4.5f, 
+            isActive: true);
+        
+        listing.Id = listingId; // Присваиваем нужный ID
+        
+        await context.RentalListings.AddAsync(listing);
+        await context.SaveChangesAsync();
+
+        // Act
+        var result = await sut.GetActivityStatusAsync(listingId);
+
+        // Assert
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetActivityStatusAsync_WhenListingIsInactive_ShouldReturnFalse()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
+        var sut = CreateRepository(context);
+
+        var listingId = Guid.NewGuid();
+        // Снова используем CreateListing, передав isActive: false
+        var listing = CreateListing(
+            title: "Inactive Item", 
+            desc: "Description", 
+            catSlug: "test", 
+            city: "TestCity", 
+            price: 1000, 
+            rating: 4.5f, 
+            isActive: false);
+        
+        listing.Id = listingId;
+
+        await context.RentalListings.AddAsync(listing);
+        await context.SaveChangesAsync();
+
+        // Act
+        var result = await sut.GetActivityStatusAsync(listingId);
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetActivityStatusAsync_WhenListingDoesNotExist_ShouldReturnFalse()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        await ResetDatabaseAsync(context);
+        var sut = CreateRepository(context);
+
+        var nonExistentId = Guid.NewGuid();
+
+        // Act
+        var result = await sut.GetActivityStatusAsync(nonExistentId);
+
+        // Assert
+        result.Should().BeFalse();
+    }
+    
+    [Fact]
     public async Task GetAsync_UnknownId_ShouldReturnNull()
     {
         // Arrange
@@ -161,6 +240,7 @@ public class RentalListingRepositoryTests
 
         var listing = new RentalListing
         {
+            Id = Guid.NewGuid(),
             TitleSlug = "new-camera",
             CategorySlug = dto.CategorySlug,
             Title = dto.Title,

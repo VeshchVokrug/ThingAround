@@ -72,7 +72,7 @@ public static class RentalListingMapper
     {
         return new AvailabilitySlotDto
         {
-            Date = source.Date is null ? new Gateway.Models.CalendarDate() : source.Date.ToDto(),
+            DateDto = source.Date is null ? new Gateway.Models.CatalogCalendarDateDto() : source.Date.ToDto(),
             Version = source.Version,
             Price = source.HasPrice ? source.Price : null,
             ReservedAt = source.ReservedAt?.ToDateTime(),
@@ -86,7 +86,7 @@ public static class RentalListingMapper
     {
         var slot = new CatalogService.Grpc.AvailabilitySlot
         {
-            Date = source.Date.ToGrpc(),
+            Date = source.DateDto.ToGrpc(),
             Version = source.Version,
             IsAvailable = source.IsAvailable,
             IsReversible = source.IsReversible

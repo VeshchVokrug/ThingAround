@@ -49,7 +49,7 @@ public class CreateBookingRequestValidator : AbstractValidator<CreateBookingRequ
         RuleFor(x => x).Must(x => {
             var start = new DateOnly(x.StartDate.Year, x.StartDate.Month, x.StartDate.Day);
             var end = new DateOnly(x.EndDate.Year, x.EndDate.Month, x.EndDate.Day);
-            return end > start;
+            return end >= start;
         }).WithMessage("End date must be after start date");
 
         RuleFor(x => x.ExpectedPrice)
@@ -66,16 +66,6 @@ public class GetBookingByIdRequestValidator : AbstractValidator<GetBookingByIdRe
         RuleFor(x => x.BookingId)
             .Must(guid => Guid.TryParse(guid, out _))
             .WithMessage("Invalid Booking ID format");
-    }
-}
-
-public class GetByUserIdRequestValidator : AbstractValidator<GetByUserIdRequest>
-{
-    public GetByUserIdRequestValidator()
-    {
-        RuleFor(x => x.UserId)
-            .Must(guid => Guid.TryParse(guid, out _))
-            .WithMessage("Invalid User ID format");
     }
 }
 

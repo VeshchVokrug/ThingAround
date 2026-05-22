@@ -44,6 +44,7 @@ public class ExceptionInterceptor : Interceptor
             ForbiddenOrNotFoundException => new RpcException(new Status(StatusCode.NotFound, exception.Message)),
             TimeoutException => new RpcException(new Status(StatusCode.Aborted, exception.Message)),
             AuthenticationException => new RpcException(new Status(StatusCode.Unauthenticated, exception.Message)),
+            InvalidOperationException => new RpcException(new Status(StatusCode.Aborted, exception.Message)),
             RpcException rpcEx => rpcEx,
             _ => new RpcException(new Status(StatusCode.Internal, "An internal server error occurred"))
         };

@@ -22,9 +22,7 @@ public class RentalDbContext : DbContext
     {
         modelBuilder.HasPostgresExtension("btree_gist");
         
-        modelBuilder.AddInboxStateEntity();
-        modelBuilder.AddOutboxMessageEntity();
-        modelBuilder.AddOutboxStateEntity();
+        modelBuilder.AddTransactionalOutboxEntities();
         
         ConfigureBookings(modelBuilder.Entity<Booking>());
         modelBuilder.ApplyConfiguration(new BookingStateConfiguration());

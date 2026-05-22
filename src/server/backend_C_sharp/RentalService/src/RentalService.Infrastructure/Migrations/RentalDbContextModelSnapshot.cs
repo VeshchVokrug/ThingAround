@@ -258,10 +258,6 @@ namespace RentalService.Infrastructure.Migrations
                         .HasDefaultValue(1L)
                         .HasColumnName("booking_version");
 
-                    b.Property<DateTimeOffset?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("completed_at");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");

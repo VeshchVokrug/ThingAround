@@ -33,6 +33,16 @@ public class RentalListingService : IRentalListingService
         _random = new Random();
     }
 
+    public async Task IsOwnerAsync(Guid listingId, Guid userId)
+    {
+        var isOwner = await _rentalListingRepository.IsOwnerAsync(listingId, userId);
+        
+        if (!isOwner)
+        {
+            throw new ForbiddenOrNotFoundException("Объявление", listingId);
+        }
+    }
+
     public async Task<RentalListingDto> GetAsync(Guid listingId, CancellationToken ct = default)
     {
         var listing = await _rentalListingRepository.GetAsync(listingId, ct);
@@ -124,6 +134,19 @@ public class RentalListingService : IRentalListingService
         await ExecuteDeactivationAsync(listingId, ownerId, ct);
     }
 
+    public async Task ActivateAsync(Guid listingId, CancellationToken ct = default)
+    {
+        Guid? ownerId = _userContext.IsAdmin ? null : _userContext.UserId;
+        
+        var success = await _rentalListingRepository.ActivateAsync(listingId, ownerId, ct);
+        if (!success)
+        {
+            throw new ForbiddenOrNotFoundException("Объявление", listingId);
+        }
+
+        await _rentalListingRepository.SaveChangesAsync(ct);
+    }
+
     public async Task SystemDeactivateAsync(Guid listingId, CancellationToken ct = default)
     {
         await ExecuteDeactivationAsync(listingId, null, ct);
@@ -198,17 +221,20 @@ public class RentalListingService : IRentalListingService
         await _rentalListingRepository.SaveChangesAsync(ct);
     }
 
+    
+    
     public async Task<bool> TryReserveSlotsAsync(ReservationSlotsDto dto, CancellationToken ct = default)
     {
         if (dto.BookingId == null)
         {
             var currentUserId = _userContext.UserId;
-            var isOwner = await _rentalListingRepository.IsOwnerAsync(dto.ListingId, currentUserId, ct);
-        
-            if (!isOwner)
-            {
-                throw new ForbiddenOrNotFoundException("Объявление", dto.ListingId);
-            }
+            await IsOwnerAsync(dto.ListingId, currentUserId);
+        }
+
+        var listingIsActive = await _rentalListingRepository.GetActivityStatusAsync(dto.ListingId, ct);
+        if (!listingIsActive)
+        {
+            throw new ListingInactiveException(dto.ListingId);
         }
         
         var success = await _availabilitySlotRepository.TryReserveSlotsAsync(dto.ListingId, dto.Dates, dto.BookingId, ct );
@@ -239,7 +265,7 @@ public class RentalListingService : IRentalListingService
         await _availabilitySlotRepository.CancelReservationAsync(slots.ListingId, slots.Dates, slots.BookingId, ct);
         await _availabilitySlotRepository.SaveChangesAsync(ct);
     }
-    
+
     private async Task ExecuteDeactivationAsync(Guid listingId, Guid? ownerId, CancellationToken ct)
     {
         var success = await _rentalListingRepository.DeactivateAsync(listingId, ownerId, ct);
@@ -266,7 +292,7 @@ public class RentalListingService : IRentalListingService
 
         if (persistedByDate.Count != requestedByDate.Count || persistedByDate.Keys.Except(requestedByDate.Keys).Any())
         {
-            throw new AvailabilityConflictException(listingId, requestedByDate.Keys);
+            throw new ArgumentException("Передано неверное количество слотов, ожидается 60 слотов с текущей даты.");
         }
 
         foreach (var (date, requestedSlot) in requestedByDate)

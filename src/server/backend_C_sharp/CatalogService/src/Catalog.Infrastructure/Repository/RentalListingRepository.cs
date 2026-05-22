@@ -3,6 +3,7 @@ using Catalog.Contracts.DTO.Listing.Rental;
 using Catalog.Contracts.Repository.Abstractions;
 using Domain.Entity;
 using Infrastructure.Persistence;
+using MassTransit.Initializers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using NpgsqlTypes;
@@ -74,7 +75,8 @@ public class RentalListingRepository : IRentalListingRepository
                 x.TitleSlug,
                 x.ImagesUrls != null ? x.ImagesUrls.FirstOrDefault() : null,
                 x.DefaultPrice,
-                x.OwnerRating
+                x.OwnerRating,
+                x.IsActive
             ))
             .ToListAsync(ct);
     }
@@ -153,7 +155,8 @@ public class RentalListingRepository : IRentalListingRepository
                 x.TitleSlug,
                 x.ImagesUrls != null ? x.ImagesUrls.FirstOrDefault() : null,
                 x.DefaultPrice,
-                x.OwnerRating
+                x.OwnerRating,
+                x.IsActive
             ))
             .ToListAsync(ct);
 
@@ -168,8 +171,11 @@ public class RentalListingRepository : IRentalListingRepository
 
     public async Task<Guid> CreateAsync(RentalListing listing, IEnumerable<DateOnly> busyDates, CancellationToken ct = default)
     {
-          
-
+        if (listing.Id == Guid.Empty)
+        {
+            listing.Id = Guid.NewGuid();
+        }
+        
         var listingId = listing.Id;
 
         await _context.RentalListings.AddAsync(listing, ct);
@@ -177,6 +183,16 @@ public class RentalListingRepository : IRentalListingRepository
         await _availabilitySlotRepository.PrepareInitialSlotsAsync(listingId, listing.DefaultPrice, busyDates);
 
         return listingId;
+    }
+
+    public async Task<bool> GetActivityStatusAsync(Guid listingId, CancellationToken ct = default)
+    {
+        var isActive = await _context.RentalListings
+            .Where(rl => rl.Id == listingId)
+            .Select(rl => rl.IsActive)
+            .FirstOrDefaultAsync(ct);
+        
+        return isActive is true;
     }
 
     public async Task<bool> UpdateAsync(RentalListingDto dto, Guid? ownerId = null, CancellationToken ct = default)
@@ -260,7 +276,22 @@ public class RentalListingRepository : IRentalListingRepository
         listing.IsActive = false;
         listing.Version++;
         listing.UpdatedAt = DateTime.UtcNow;
+        
+        return true;
+    }
 
+    public async Task<bool> ActivateAsync(Guid listingId, Guid? ownerId = null, CancellationToken ct = default)
+    {
+        var listing = await _context.RentalListings.FirstOrDefaultAsync(x => x.Id == listingId, ct);
+
+        if (listing == null)
+        {
+            return false;
+        }
+        
+        listing.IsActive = true;
+        listing.Version++;
+        listing.UpdatedAt = DateTime.UtcNow;
 
         return true;
     }

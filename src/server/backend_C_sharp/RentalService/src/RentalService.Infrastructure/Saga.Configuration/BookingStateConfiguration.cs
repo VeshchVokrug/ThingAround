@@ -40,9 +40,6 @@ public sealed class BookingStateConfiguration : IEntityTypeConfiguration<Booking
 
         builder.Property(x => x.UpdatedAt)
             .HasColumnType("timestamp with time zone");
-        
-        builder.Property(x => x.CompletedAt)
-            .HasColumnType("timestamp with time zone");
 
         builder.Property(x => x.FailureReason)
             .HasMaxLength(500);

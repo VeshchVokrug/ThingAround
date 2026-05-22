@@ -39,8 +39,10 @@ public static class RentalGrpcMapper
             TotalPrice = (int)booking.TotalPrice,
             CreatedAt = Timestamp.FromDateTimeOffset(booking.CreatedAt),
             UpdatedAt = Timestamp.FromDateTimeOffset(booking.UpdatedAt),
+            ExpiresAt = booking.ExpiresAt == null ? null : Timestamp.FromDateTimeOffset(booking.ExpiresAt.Value),
             Version = booking.Version,
-            CancellationReason = booking.CancellationReason ?? string.Empty
+            CancellationReason = booking.CancellationReason ?? string.Empty,
+            Status = booking.Status
         };
 
         if (booking.ExpiresAt.HasValue)

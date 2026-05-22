@@ -34,7 +34,11 @@ public class BookingStateMachine : MassTransitStateMachine<BookingState>
         State(() => AwaitingCatalogReservation);
         State(() => AwaitingOwnerApproval);
 
-        Event(() => OnSagaStarted, x => x.CorrelateById(m => m.Message.BookingId));
+        Event(() => OnSagaStarted, x =>
+        {
+            x.CorrelateById(m => m.Message.BookingId);
+            x.SelectId(m => m.Message.BookingId);
+        });
         Event(() => OnCatalogSlotsReserved, x => x.CorrelateById(m => m.Message.BookingId));
         Event(() => OnCatalogSlotsReservationFailed, x => x.CorrelateById(m => m.Message.BookingId));
         Event(() => OnRentalBookingApproved, x => x.CorrelateById(m => m.Message.BookingId));
@@ -67,7 +71,7 @@ public class BookingStateMachine : MassTransitStateMachine<BookingState>
 
             When(OnCatalogSlotsReservationFailed)
                 .Then(LogSagaState)
-                .Then(context => context.Saga.FailureReason = "Catalog failed to reserve slots")
+                .Then(context => context.Saga.FailureReason = context.Message.Reason)
                 .ThenAsync(context => UpdateBookingStatus(context, BookingStatus.Rejected, context.Saga.FailureReason))
                 .TransitionTo(Final)
         );
@@ -136,22 +140,24 @@ public class BookingStateMachine : MassTransitStateMachine<BookingState>
             EndDate = context.Saga.EndDate,
             TotalPrice = context.Saga.TotalPrice,
             CreatedAt = context.Saga.CreatedAt,
-            Version = context.Saga.BookingVersion
+            Version = context.Saga.BookingVersion,
         };
         await bookingRepository.AddAsync(booking);
     }
 
-    private Task SendCatalogReserveSlots(BehaviorContext<BookingState, RentalBookingRequestedEvent> context)
+    private async Task SendCatalogReserveSlots(BehaviorContext<BookingState, RentalBookingRequestedEvent> context)
     {
-        return context.Publish(new CatalogReserveSlots(
+        await context.Publish(new CatalogReserveSlots(
             context.Saga.CorrelationId,
             context.Saga.ListingId,
+            context.Saga.OwnerId,
+            context.Saga.TotalPrice,
             GenerateDates(context.Saga.StartDate, context.Saga.EndDate)));
     }
 
-    private Task SendCatalogReleaseSlots<T>(BehaviorContext<BookingState, T> context) where T : class
+    private async Task SendCatalogReleaseSlots<T>(BehaviorContext<BookingState, T> context) where T : class
     {
-        return context.Publish(new CatalogReleaseSlots(
+        await context.Publish(new CatalogReleaseSlots(
             context.Saga.CorrelationId,
             context.Saga.ListingId,
             GenerateDates(context.Saga.StartDate, context.Saga.EndDate)));
@@ -168,7 +174,7 @@ public class BookingStateMachine : MassTransitStateMachine<BookingState>
             Id = context.Saga.CorrelationId,
             Status = status,
             UpdatedAt = _timeProvider.GetUtcNow(),
-            ExpiresAt = status == BookingStatus.Expired ? _timeProvider.GetUtcNow() : null,
+            ExpiresAt = status == BookingStatus.PendingApproval ? _timeProvider.GetUtcNow().Add(OwnerApprovalTimeoutWindow) : null,
             Version = context.Saga.BookingVersion,
             CancellationReason = cancellationReason
         });

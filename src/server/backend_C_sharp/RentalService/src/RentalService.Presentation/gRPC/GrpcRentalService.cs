@@ -1,4 +1,5 @@
-﻿using Grpc.Core;
+﻿using Google.Protobuf.WellKnownTypes;
+using Grpc.Core;
 using RentalService.Application.Services.Abstractions;
 using RentalService.Grpc;
 using RentalService.Presentation.Mapper;
@@ -27,17 +28,15 @@ public class GrpcRentalService : RentalService.Grpc.RentalService.RentalServiceB
         return booking.ToGrpc();
     }
 
-    public override async Task<BookingListResponse> GetBookingsByTenant(GetByUserIdRequest request, ServerCallContext context)
+    public override async Task<BookingListResponse> GetBookingsByTenant(Empty request, ServerCallContext context)
     {
-        var tenantId = ParseGuidOrThrow(request.UserId);
-        var bookings = await _bookingService.GetAllByTenantAsync(tenantId);
+        var bookings = await _bookingService.GetAllByTenantAsync();
         return bookings.ToGrpc();
     }
 
-    public override async Task<BookingListResponse> GetBookingsByOwner(GetByUserIdRequest request, ServerCallContext context)
+    public override async Task<BookingListResponse> GetBookingsByOwner(Empty request, ServerCallContext context)
     {
-        var ownerId = ParseGuidOrThrow(request.UserId);
-        var bookings = await _bookingService.GetAllByOwnerAsync(ownerId);
+        var bookings = await _bookingService.GetAllByOwnerAsync();
         return bookings.ToGrpc();
     }
 

@@ -25,7 +25,6 @@ public class BookingState : SagaStateMachineInstance
     //Audit info
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? UpdatedAt { get; set; }
-    public DateTimeOffset? CompletedAt { get; set; }
     
     //Callback
     public Guid? RequestId { get; set; }

@@ -2,4 +2,4 @@
 
 public record CatalogSlotsReservationFailedEvent(
     Guid BookingId,
-    string Reason)  : ICatalogEvents;
+    string Reason) : ICatalogEvents;

@@ -9,16 +9,20 @@
 
     <ItemGroup>
       <Folder Include="Migrations\" />
-      <Folder Include="Persistence\Migrations\" />
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="MassTransit" Version="8.5.9" />
+      <PackageReference Include="MassTransit.EntityFrameworkCore" Version="8.5.9" />
+      <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.9" />
       <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.9" />
       <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\..\Core\Core.csproj" />
+      <ProjectReference Include="..\Catalog.Application\Catalog.Application.csproj" />
       <ProjectReference Include="..\Catalog.Contracts\Catalog.Contracts.csproj" />
       <ProjectReference Include="..\Catalog.Domain\Catalog.Domain.csproj" />
     </ItemGroup>

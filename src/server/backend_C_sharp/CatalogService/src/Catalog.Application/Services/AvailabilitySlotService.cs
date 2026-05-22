@@ -14,10 +14,14 @@ public class AvailabilitySlotService : IAvailabilitySlotService
         _repository = repository;
     }
 
-    public async Task<List<AvailabilitySlotDto>> GetAllSlots(Guid listingId, IEnumerable<DateOnly> dates, CancellationToken ct = default)
+    public async Task<PriceValidationResult> ValidateExpectedPrice(Guid listingId, decimal expectedPrice, IEnumerable<DateOnly> dates, CancellationToken ct = default)
     {
         var slots = await _repository.GetSlotsAsync(listingId, dates, ct);
 
-        return slots.Select(domain => domain.ToDto()).ToList();
+        var actualPrice = slots.Select(s => s.Price).Sum();
+
+        return actualPrice != expectedPrice 
+            ? new PriceValidationResult(false, actualPrice) 
+            : new PriceValidationResult(true);
     }
 }

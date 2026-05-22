@@ -2,7 +2,7 @@
 
 public record ReservationSlotsDto
 {
-    public Guid ListingId { get; init; }
-    public IEnumerable<DateOnly> Dates { get; init; }
+    public required Guid ListingId { get; init; }
+    public required IEnumerable<DateOnly> Dates { get; init; }
     public Guid? BookingId { get; init; }
 };

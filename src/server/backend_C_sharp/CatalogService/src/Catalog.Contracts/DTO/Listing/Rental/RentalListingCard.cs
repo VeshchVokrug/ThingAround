@@ -6,5 +6,6 @@ public record RentalListingCard(
     string TitleSlug,
     string? ImageUrl,
     int PricePerDay,
-    float OwnerRating
+    float OwnerRating,
+    bool IsActive
     );

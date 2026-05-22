@@ -10,8 +10,8 @@ import "google/protobuf/timestamp.proto";
 service RentalService{
   rpc CreateBooking(CreateBookingRequest) returns (CreateBookingResponse);
   rpc GetBooking(GetBookingByIdRequest) returns (Booking);
-  rpc GetBookingsByTenant(GetByUserIdRequest) returns (BookingListResponse);
-  rpc GetBookingsByOwner(GetByUserIdRequest) returns (BookingListResponse);
+  rpc GetBookingsByTenant(google.protobuf.Empty) returns (BookingListResponse);
+  rpc GetBookingsByOwner(google.protobuf.Empty) returns (BookingListResponse);
   rpc ApproveBooking(GetBookingByIdRequest) returns (ApprovalResponse);
   rpc RejectBooking(ChangeStatusWithReasonRequest) returns (ApprovalResponse);
   rpc CancelBooking(ChangeStatusWithReasonRequest) returns (ApprovalResponse);
@@ -40,17 +40,14 @@ message Booking {
   int32 total_price = 7;
   google.protobuf.Timestamp created_at = 8;
   google.protobuf.Timestamp updated_at = 9;
-  google.protobuf.Timestamp expires_at = 10;
-  uint32 version = 11;
-  optional string cancellation_reason = 12;
+  uint32 version = 10;
+  string status = 11;
+  optional google.protobuf.Timestamp expires_at = 12;
+  optional string cancellation_reason = 13;
 }
 
 message GetBookingByIdRequest {
   string booking_id = 1;
-}
-
-message GetByUserIdRequest {
-  string user_id = 1;
 }
 
 message BookingListResponse {

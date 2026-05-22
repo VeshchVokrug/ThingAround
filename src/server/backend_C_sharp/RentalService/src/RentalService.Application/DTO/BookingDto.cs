@@ -8,6 +8,7 @@ public record BookingDto
     public Guid OwnerId { get; init; }
     public DateOnly StartDate { get; init; }
     public DateOnly EndDate { get; init; }
+    public required string Status { get; init; }
     public decimal TotalPrice { get; init; }
     public DateTimeOffset CreatedAt { get; init; } = default;
     public DateTimeOffset UpdatedAt { get; init; } = default;
