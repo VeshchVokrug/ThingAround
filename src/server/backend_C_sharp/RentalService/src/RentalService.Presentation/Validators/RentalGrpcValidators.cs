@@ -53,7 +53,7 @@ public class CreateBookingRequestValidator : AbstractValidator<CreateBookingRequ
         }).WithMessage("End date must be after start date");
 
         RuleFor(x => x.ExpectedPrice)
-            .GreaterThan(0).WithMessage("Price must be greater than 0");
+            .GreaterThanOrEqualTo(0).WithMessage("Price must be greater than 0");
     }
 
     private bool BeAValidGuid(string guid) => Guid.TryParse(guid, out _);

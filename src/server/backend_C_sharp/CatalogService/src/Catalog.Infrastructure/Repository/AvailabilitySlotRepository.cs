@@ -24,16 +24,23 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
 
     private DateOnly Today => DateOnly.FromDateTime(_timeProvider.GetUtcNow().DateTime);
 
-    public async Task CreateAsync(Guid listingId, int price, DateOnly date, CancellationToken ct = default)
+    public async Task CreateRangeAsync(Guid listingId, int price, IEnumerable<DateOnly> dates, CancellationToken ct = default)
     {
-        await _context.AvailabilitySlots.AddAsync(new AvailabilitySlot
+        var datesList = dates.Select(day => new AvailabilitySlot
         {
             ListingId = listingId,
-            Date = date,
+            Date = day,
             Version = 1,
             IsAvailable = true,
             Price = price
-        }, ct);
+        }).ToList();
+        
+        if (datesList.Count == 0)
+        {
+            return;
+        }
+        
+        await _context.AvailabilitySlots.AddRangeAsync(datesList, ct);
     }
 
     public async Task PrepareInitialSlotsAsync(Guid listingId, int defaultPrice, IEnumerable<DateOnly> busyDates)
@@ -209,18 +216,21 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
         return true;
     }
 
-    public async Task<int> RemoveAsync(Guid listingId, DateOnly date, CancellationToken ct = default)
+    public async Task<int> RemoveRangeAsync(Guid listingId, IEnumerable<DateOnly> dates, CancellationToken ct = default)
     {
-        var slot = await _context.AvailabilitySlots
-            .FirstOrDefaultAsync(s => s.ListingId == listingId && s.Date == date, ct);
-
-        if (slot == null)
+        var datesList = dates.ToList();
+        
+        if (datesList.Count == 0)
         {
             return 0;
         }
+        
+        var slot = await _context.AvailabilitySlots
+            .Where(s => s.ListingId == listingId && datesList.Contains(s.Date))
+            .ToListAsync(ct);
 
-        _context.AvailabilitySlots.Remove(slot);
+        _context.AvailabilitySlots.RemoveRange(slot);
 
-        return 1;
+        return slot.Count;
     }
 }
