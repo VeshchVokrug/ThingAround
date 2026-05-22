@@ -4,5 +4,5 @@ namespace Application.Services.Abstractions;
 
 public interface IAvailabilitySlotService
 {
-    Task<List<AvailabilitySlotDto>> GetAllSlots(Guid listingId, IEnumerable<DateOnly> dates, CancellationToken ct = default);
+    Task<PriceValidationResult> ValidateExpectedPrice(Guid listingId, decimal expectedPrice, IEnumerable<DateOnly> dates, CancellationToken ct = default);
 }

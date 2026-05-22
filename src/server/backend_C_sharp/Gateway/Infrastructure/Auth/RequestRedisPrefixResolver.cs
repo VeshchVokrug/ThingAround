@@ -7,7 +7,8 @@ public sealed class RequestRedisPrefixResolver : IRedisPrefixResolver
     private static readonly Dictionary<string, string> PrefixMap = new(StringComparer.OrdinalIgnoreCase)
     {
         ["identity"] = RedisKeyPrefixes.IdentityProfilePrefix,
-        ["catalog"] = RedisKeyPrefixes.CatalogPrefix
+        ["catalog"] = RedisKeyPrefixes.CatalogPrefix,
+        ["rental"] = RedisKeyPrefixes.RentalPrefix,
     };
 
     public bool TryResolvePrefix(HttpRequest request, out string prefix)

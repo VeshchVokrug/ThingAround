@@ -55,10 +55,10 @@ public class GrpcCatalogService : CatalogService.Grpc.CatalogService.CatalogServ
         return new Empty();
     }
 
-    public override async Task<Empty> SystemDeactivateRentalListing(GetRentalListingRequest request, ServerCallContext context)
+    public override async Task<Empty> ActivateRentalListing(GetRentalListingRequest request, ServerCallContext context)
     {
         var listingId = ParseGuidOrThrow(request.ListingId);
-        await _rentalListingService.SystemDeactivateAsync(listingId, context.CancellationToken);
+        await _rentalListingService.ActivateAsync(listingId, context.CancellationToken);
         return new Empty();
     }
 

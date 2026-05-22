@@ -201,13 +201,6 @@ public class ReservationSlotsRequestValidator : AbstractValidator<ReservationSlo
 
         RuleForEach(x => x.Dates)
             .SetValidator(new CalendarDateValidator());
-
-        When(x => x.HasBookingId, () =>
-        {
-            RuleFor(x => x.BookingId)
-                .Must(BeValidGuid)
-                .WithMessage("BookingId must be a valid GUID");
-        });
     }
 
     private static bool BeValidGuid(string value) => Guid.TryParse(value, out _);

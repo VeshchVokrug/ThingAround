@@ -1,4 +1,5 @@
 ﻿using Domain.Entity;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NpgsqlTypes;
@@ -18,6 +19,8 @@ public class CatalogDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        
+        modelBuilder.AddTransactionalOutboxEntities();
         
         ConfigureRentalListings(modelBuilder.Entity<RentalListing>());
         ConfigureAvailabilitySlots(modelBuilder.Entity<AvailabilitySlot>());

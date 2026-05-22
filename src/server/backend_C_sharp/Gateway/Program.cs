@@ -152,6 +152,13 @@ public class Program
 			options.Address = new Uri(grpcCatalogEndpoint);
 		})
 		.AddHeaderPropagation();
+		
+		var grpcRentalEndpoint = GetGrpcConnectionEndpoint(nameof(GrpcEndpointsOptions.RentalService), configuration);
+		services.AddGrpcClient<RentalService.Grpc.RentalService.RentalServiceClient>(options =>
+		{
+			options.Address = new Uri(grpcRentalEndpoint);
+		})
+		.AddHeaderPropagation();
 	}
 
 	private static string GetGrpcConnectionEndpoint(string serviceName, IConfiguration configuration)

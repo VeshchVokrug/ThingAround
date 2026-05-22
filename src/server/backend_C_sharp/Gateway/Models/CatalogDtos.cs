@@ -3,7 +3,7 @@
 /// <summary>
 /// Дата в формате календарного дня.
 /// </summary>
-public sealed record CalendarDate
+public sealed record CatalogCalendarDateDto
 {
     public int Year { get; init; }
 
@@ -29,9 +29,9 @@ public sealed record RentalFilterRequest
 
     public float? MinRating { get; init; }
 
-    public CalendarDate? StartDate { get; init; }
+    public CatalogCalendarDateDto? StartDate { get; init; }
 
-    public CalendarDate? EndDate { get; init; }
+    public CatalogCalendarDateDto? EndDate { get; init; }
 
     public int PageNumber { get; init; } = 1;
 
@@ -107,7 +107,7 @@ public sealed record CreateRentalListingRequest
 
     public List<string> ManagerSocialsUrls { get; init; } = [];
 
-    public List<CalendarDate> BusyDates { get; init; } = [];
+    public List<CatalogCalendarDateDto> BusyDates { get; init; } = [];
 }
 
 /// <summary>
@@ -123,7 +123,7 @@ public sealed record CreateRentalListingResponse
 /// </summary>
 public sealed record AvailabilitySlot
 {
-    public CalendarDate Date { get; init; } = new();
+    public CatalogCalendarDateDto DateDto { get; init; } = new();
 
     public int Version { get; init; }
 
@@ -185,9 +185,7 @@ public sealed record RentalListing
 /// </summary>
 public sealed record ReservationSlotsRequest
 {
-    public List<CalendarDate> Dates { get; init; } = [];
-
-    public string? BookingId { get; init; }
+    public List<CatalogCalendarDateDto> Dates { get; init; } = [];
 }
 
 /// <summary>

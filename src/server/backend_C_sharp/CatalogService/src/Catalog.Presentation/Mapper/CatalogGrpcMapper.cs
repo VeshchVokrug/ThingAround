@@ -81,8 +81,7 @@ public static class CatalogGrpcMapper
         return new ReservationSlotsDto
         {
             ListingId = ParseGuidOrThrow(request.ListingId),
-            Dates = request.Dates.Select(ToDateOnly).ToList(),
-            BookingId = request.HasBookingId ? ParseGuidOrThrow(request.BookingId) : null
+            Dates = request.Dates.Select(ToDateOnly).ToList()
         };
     }
 

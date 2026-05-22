@@ -12,11 +12,6 @@ public static class ReservationSlotsRequestDtoMapper
             ListingId = listingId
         };
 
-        if (source.BookingId is not null)
-        {
-            request.BookingId = source.BookingId;
-        }
-
         request.Dates.AddRange(source.Dates.Select(date => date.ToGrpc()));
 
         return request;

@@ -14,7 +14,7 @@ service CatalogService {
   rpc CreateRentalListing(CreateRentalListingRequest) returns (CreateRentalListingResponse);
   rpc RemoveRentalListing(GetRentalListingRequest) returns (google.protobuf.Empty);
   rpc DeactivateRentalListing(GetRentalListingRequest) returns (google.protobuf.Empty);
-  rpc SystemDeactivateRentalListing(GetRentalListingRequest) returns (google.protobuf.Empty);
+  rpc ActivateRentalListing(GetRentalListingRequest) returns (google.protobuf.Empty);
   rpc UpdateRentalListing(RentalListing) returns (google.protobuf.Empty);
   rpc TryReserveSlots(ReservationSlotsRequest) returns (TryReserveSlotsResponse);
   rpc CancelReservation(ReservationSlotsRequest) returns (google.protobuf.Empty);
@@ -119,7 +119,6 @@ message AvailabilitySlot {
 message ReservationSlotsRequest {
   string listing_id = 1;
   repeated CalendarDate dates = 2;
-  optional string booking_id = 3;
 }
 
 message CalendarDate {

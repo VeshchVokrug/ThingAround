@@ -1,4 +1,5 @@
-﻿using Application.Exceptions;
+﻿using System.Security.Authentication;
+using Application.Exceptions;
 using FluentValidation;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
@@ -44,6 +45,7 @@ public class ExceptionInterceptor : Interceptor
             ForbiddenOrNotFoundException => new RpcException(new Status(StatusCode.NotFound, exception.Message)),
             AvailabilityConflictException => new RpcException(new Status(StatusCode.FailedPrecondition, exception.Message)),
             OptimisticConcurrencyException => new RpcException(new Status(StatusCode.Aborted, exception.Message)),
+            AuthenticationException => new RpcException(new Status(StatusCode.Unauthenticated, exception.Message)),
             RpcException rpcEx => rpcEx,
             _ => new RpcException(new Status(StatusCode.Internal, "An internal server error occurred"))
         };

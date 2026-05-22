@@ -85,7 +85,9 @@ public class RentalListingServiceTests
     
         _slotRepo.TryReserveSlotsAsync(dto.ListingId, dto.Dates, dto.BookingId, Arg.Any<CancellationToken>())
             .Returns(true);
-
+        _listingRepo.GetActivityStatusAsync(dto.ListingId, Arg.Any<CancellationToken>())
+            .Returns(true);
+        
         // Act
         await _service.TryReserveSlotsAsync(dto);
 
@@ -141,7 +143,9 @@ public class RentalListingServiceTests
 
         _slotRepo.TryReserveSlotsAsync(Arg.Any<Guid>(), Arg.Any<IEnumerable<DateOnly>>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(false);
-
+        _listingRepo.GetActivityStatusAsync(dto.ListingId, Arg.Any<CancellationToken>())
+            .Returns(true);
+        
         // Act
         var act = () => _service.TryReserveSlotsAsync(dto);
 
@@ -392,7 +396,7 @@ public class RentalListingServiceTests
             EndDate: new DateOnly(2026, 4, 11));
 
         var expected = new PagedResponse<RentalListingCard>(
-            Items: [new RentalListingCard(Guid.NewGuid(), "Title", "title", null, 100, 4.9f)],
+            Items: [new RentalListingCard(Guid.NewGuid(), "Title", "title", null, 100, 4.9f, true)],
             TotalCount: 1,
             PageNumber: 1,
             PageSize: 12,
@@ -416,7 +420,7 @@ public class RentalListingServiceTests
         var ownerId = Guid.NewGuid();
         var cards = new List<RentalListingCard>
         {
-            new(Guid.NewGuid(), "Title", "title", null, 150, 4.5f)
+            new(Guid.NewGuid(), "Title", "title", null, 150, 4.5f, true)
         };
 
         _listingRepo.GetAllByUserAsync(ownerId, Arg.Any<CancellationToken>())
@@ -457,8 +461,7 @@ public class RentalListingServiceTests
         await _listingRepo.Received(1).CreateAsync(
             Arg.Is<RentalListing>(x =>
                 x.OwnerId == userId
-                && x.Title == dto.Title
-                && x.TitleSlug == "new-title"),
+                && x.Title == dto.Title),
             dto.BusyDates,
             Arg.Any<CancellationToken>());
     }

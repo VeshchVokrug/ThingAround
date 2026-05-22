@@ -1,6 +1,7 @@
 ﻿# Local infrastructure runtime data
 Db/persistence/
 Redis/Data/
+RabbitMq/Data
 
 *.obj
 Protos/obj/

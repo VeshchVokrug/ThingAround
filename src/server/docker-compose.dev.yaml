@@ -1,6 +1,25 @@
 ﻿version: '3.8'
 
 services:
+  rabbitmq:
+    image: heidiks/rabbitmq-delayed-message-exchange:4.2.0-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin
+    volumes:
+      - ./RabbitMq/Data:/var/lib/rabbitmq
+    networks:
+      - thingaround-network
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  
   db:
     image: postgres:17-alpine
     container_name: database
@@ -48,8 +67,7 @@ services:
     container_name: identity_profile_service
     ports:
       - "5000:8080"
-    restart: 
-      always
+    restart: always
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - Kestrel__Endpoints__gRPC__Url=http://*:8080
@@ -78,6 +96,7 @@ services:
       - ASPNETCORE_URLS=http://+:8080
       - GrpcEndpoints__IdentityProfileService=http://identity-profile:8080
       - GrpcEndpoints__CatalogService=http://catalog:8080
+      - GrpcEndpoints__RentalService=http://rental:8080
       - ConnectionStrings__Redis=redis:6379,abortConnect=false
       - Jwt__Issuer=ThingAround.IdentityServer
       - Jwt__Audience=ThingAround.Client
@@ -88,6 +107,8 @@ services:
     depends_on:
       - identity-profile
       - redis
+      - catalog
+      - rental
 
   catalog:
     build:
@@ -96,19 +117,57 @@ services:
     container_name: catalog_service
     ports:
       - "5001:8080"
-    restart:
-      always
+    restart: always
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - Kestrel__Endpoints__gRPC__Url=http://*:8080
+    
       - ConnectionStrings__PostgresConnectionString=Host=db;Port=5432;Database=catalog_db;Username=admin;Password=admin
       - ConnectionStrings__Redis=redis:6379,abortConnect=false
+      
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=admin
+      - RabbitMQ__Password=admin
+      - RabbitMQ__Exchanges__CatalogEventsExchange=catalog-events
+      - RabbitMQ__Exchanges__CatalogCommandsExchange=catalog-commands
+      - RabbitMQ__Queues__CatalogServiceQueue=catalog-service
     networks:
       - thingaround-network
     depends_on:
       - db
       - redis
+      - rabbitmq
     
+  rental:
+    build:
+      context: .
+      dockerfile: backend_C_sharp/RentalService/Dockerfile
+    container_name: rental_service
+    ports:
+      - "5002:8080"
+    restart: always
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Kestrel__Endpoints__gRPC__Url=http://*:8080
+      
+      - ConnectionStrings__PostgresConnectionString=Host=db;Port=5432;Database=rental_db;Username=admin;Password=admin
+      - ConnectionStrings__Redis=redis:6379,abortConnect=false
+      
+      - RedisOptions__InstancePrefix=Rental
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=admin
+      - RabbitMQ__Password=admin
+      - RabbitMQ__Exchanges__RentalEventsExchange=rental-events
+      - RabbitMQ__Exchanges__CatalogEventsExchange=catalog-events
+      - RabbitMQ__Exchanges__CatalogCommandsExchange=catalog-commands
+      - RabbitMQ__Queues__RentalServiceQueue=rental-service
+    networks:
+      - thingaround-network
+    depends_on:
+      - db
+      - redis
+      - rabbitmq
+  
 networks:
   thingaround-network:
     driver: bridge

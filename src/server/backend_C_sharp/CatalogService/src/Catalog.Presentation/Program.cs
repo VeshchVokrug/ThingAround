@@ -63,6 +63,8 @@ public class Program
             
             options.InstancePrefix = configuration.GetValue<string>("RedisOptions:InstancePrefix") ?? "Catalog";
         });
+        
+        services.ConfigureMasstransit(configuration);
     }
 
     private static void ConfigureServices(IServiceCollection services)

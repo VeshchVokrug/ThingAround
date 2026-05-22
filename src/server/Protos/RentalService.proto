@@ -1,0 +1,71 @@
+﻿syntax = "proto3";
+
+package rental.protos;
+
+option csharp_namespace = "RentalService.Grpc";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+service RentalService{
+  rpc CreateBooking(CreateBookingRequest) returns (CreateBookingResponse);
+  rpc GetBooking(GetBookingByIdRequest) returns (Booking);
+  rpc GetBookingsByTenant(google.protobuf.Empty) returns (BookingListResponse);
+  rpc GetBookingsByOwner(google.protobuf.Empty) returns (BookingListResponse);
+  rpc ApproveBooking(GetBookingByIdRequest) returns (ApprovalResponse);
+  rpc RejectBooking(ChangeStatusWithReasonRequest) returns (ApprovalResponse);
+  rpc CancelBooking(ChangeStatusWithReasonRequest) returns (ApprovalResponse);
+}
+
+message CreateBookingRequest{
+  string listing_id = 1;
+  string owner_id = 2;
+  CalendarDate start_date = 3;
+  CalendarDate end_date = 4;
+  int32 expected_price = 5;
+}
+
+message CreateBookingResponse{
+  optional string booking_id = 1;
+  optional string cancellation_reason = 2;
+}
+
+message Booking {
+  string id = 1;
+  string listing_id = 2;
+  string tenant_id = 3;
+  string owner_id = 4;
+  CalendarDate start_date = 5;
+  CalendarDate end_date = 6;
+  int32 total_price = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  uint32 version = 10;
+  string status = 11;
+  optional google.protobuf.Timestamp expires_at = 12;
+  optional string cancellation_reason = 13;
+}
+
+message GetBookingByIdRequest {
+  string booking_id = 1;
+}
+
+message BookingListResponse {
+  repeated Booking bookings = 1;
+}
+
+message ChangeStatusWithReasonRequest {
+  string booking_id = 1;
+  string reason = 2;
+}
+
+message ApprovalResponse {
+  bool success = 1;
+  optional string cancellation_reason = 2;
+}
+
+message CalendarDate {
+  int32 year = 1;
+  int32 month = 2;
+  int32 day = 3;
+}

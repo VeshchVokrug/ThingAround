@@ -105,7 +105,10 @@ public class RentalListingController : ControllerBase
     /// Обновляет объявление.
     /// </summary>
     /// <param name="listingId">Идентификатор объявления.</param>
-    /// <param name="request">Полная модель объявления.</param>
+    /// <param name="request">Полная модель объявления.
+    /// Модель состоит из двух частей: метаданные самого объявления и список слотов доступности.
+    /// Для обновления метаданных список слотов доступности может отсутствовать в запросе.
+    /// Для обновления слотов доступности важно отпровлять полный снапшот объявления со всеми слотами доступности(60 шт с текущей даты).</param>
     /// <param name="ct">Токен отмены запроса.</param>
     [HttpPut("{listingId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -156,26 +159,26 @@ public class RentalListingController : ControllerBase
     }
 
     /// <summary>
-    /// Деактивирует объявление системой.
+    /// Активирует объявление владельцем.
     /// </summary>
     /// <param name="listingId">Идентификатор объявления.</param>
     /// <param name="ct">Токен отмены запроса.</param>
-    [HttpPost("{listingId}/system-deactivate")]
+    [HttpPost("{listingId}/activate")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> SystemDeactivate(string listingId, CancellationToken ct)
+    public async Task<IActionResult> Activate(string listingId, CancellationToken ct)
     {
         var request = new CatalogService.Grpc.GetRentalListingRequest
         {
             ListingId = listingId
         };
 
-        await _client.SystemDeactivateRentalListingAsync(request, Request.ToAuthorizationMetadata(), cancellationToken: ct);
+        await _client.ActivateRentalListingAsync(request, Request.ToAuthorizationMetadata(), cancellationToken: ct);
         return NoContent();
     }
 
     /// <summary>
-    /// Бронирует слоты доступности.
+    /// Бронирует слоты доступности владельцем.
     /// </summary>
     /// <param name="listingId">Идентификатор объявления.</param>
     /// <param name="request">Список дат и опциональный идентификатор бронирования.</param>
@@ -192,7 +195,7 @@ public class RentalListingController : ControllerBase
     }
 
     /// <summary>
-    /// Отменяет бронирование слотов.
+    /// Отменяет бронирование слотов владельцем.
     /// </summary>
     /// <param name="listingId">Идентификатор объявления.</param>
     /// <param name="request">Список дат и опциональный идентификатор бронирования.</param>
