@@ -57,13 +57,13 @@
 - .NET SDK 10
 - Доступный Redis (`localhost:6379`)
 - Запущенный `IdentityProfileService` на `http://localhost:5000`
-- Файл `Gateway/Configs/public.pem`
+- Файл `backend_C_sharp/Gateway/Configs/public.pem`
 
 Из корня `server`:
 
 ```powershell
-dotnet restore .\Gateway\Gateway.csproj
-dotnet run --project .\Gateway\Gateway.csproj
+dotnet restore .\backend_C_sharp\Gateway\Gateway.csproj
+dotnet run --project .\backend_C_sharp\Gateway\Gateway.csproj
 ```
 
 После запуска:
@@ -75,7 +75,7 @@ dotnet run --project .\Gateway\Gateway.csproj
 
 Сервис интегрирован в `docker-compose.dev.yaml` под именем `gateway`.
 
-Из корня `backend_C_sharp`:
+Из корня `server`:
 
 ```powershell
 docker compose -f .\docker-compose.dev.yaml build gateway

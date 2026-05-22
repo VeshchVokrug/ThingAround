@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+		xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+					  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-5.0.xsd"
+		objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+
+	<changeSet id="20260427-01-shedlock-table" author="copilot">
+		<createTable tableName="shedlock">
+			<column name="name" type="VARCHAR(64)">
+				<constraints nullable="false" primaryKey="true" primaryKeyName="pk_shedlock"/>
+			</column>
+			<column name="lock_until" type="TIMESTAMP WITH TIME ZONE">
+				<constraints nullable="false"/>
+			</column>
+			<column name="locked_at" type="TIMESTAMP WITH TIME ZONE">
+				<constraints nullable="false"/>
+			</column>
+			<column name="locked_by" type="VARCHAR(255)">
+				<constraints nullable="false"/>
+			</column>
+		</createTable>
+	</changeSet>
+
+	<changeSet id="20260427-02-period-indexes" author="copilot">
+		<createIndex tableName="periods" indexName="idx_periods_listing_status">
+			<column name="coownership_listing_id"/>
+			<column name="status"/>
+		</createIndex>
+
+		<createIndex tableName="periods" indexName="idx_periods_rental_status">
+			<column name="rental_listing_id"/>
+			<column name="status"/>
+		</createIndex>
+
+		<createIndex tableName="periods" indexName="idx_periods_status_end_date">
+			<column name="status"/>
+			<column name="end_date"/>
+		</createIndex>
+	</changeSet>
+
+</databaseChangeLog>
+
