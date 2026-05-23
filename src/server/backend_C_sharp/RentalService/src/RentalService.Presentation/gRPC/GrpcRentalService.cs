@@ -40,6 +40,18 @@ public class GrpcRentalService : RentalService.Grpc.RentalService.RentalServiceB
         return bookings.ToGrpc();
     }
 
+    public override async Task<BookingListResponse> GetCompletedBookingsByTenant(Empty request, ServerCallContext context)
+    {
+        var bookings = await _bookingService.GetAllCompletedByTenantAsync();
+        return bookings.ToGrpc();
+    }
+
+    public override async Task<BookingListResponse> GetCompletedBookingsByOwner(Empty request, ServerCallContext context)
+    {
+        var bookings = await _bookingService.GetAllCompletedByOwnerAsync();
+        return bookings.ToGrpc();
+    }
+
     public override async Task<ApprovalResponse> ApproveBooking(GetBookingByIdRequest request, ServerCallContext context)
     {
         var bookingId = ParseGuidOrThrow(request.BookingId);

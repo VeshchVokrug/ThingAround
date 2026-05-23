@@ -30,37 +30,4 @@ public static class MinioServiceExtensions
 
         return services;
     }
-    
-    public static async Task InitializeMinioAsync(this IServiceProvider services)
-    {
-        using var scope = services.CreateScope();
-        var s3Client = scope.ServiceProvider.GetRequiredService<IAmazonS3>();
-        var options = scope.ServiceProvider.GetRequiredService<IOptions<MinioOptions>>().Value;
-        
-        if (!await AmazonS3Util.DoesS3BucketExistV2Async(s3Client, options.BucketName))
-        {
-            await s3Client.PutBucketAsync(options.BucketName);
-        }
-
-        var putCorsRequest = new PutCORSConfigurationRequest
-        {
-            BucketName = options.BucketName,
-            Configuration = new CORSConfiguration
-            {
-                Rules =
-                [
-                    new CORSRule
-                    {
-                        AllowedOrigins = options.AllowedOrigins,
-                        AllowedMethods = ["GET", "PUT", "HEAD", "DELETE"],
-                        AllowedHeaders = ["*"],
-                        ExposeHeaders = ["ETag"],
-                        MaxAgeSeconds = 3600
-                    }
-                ]
-            }
-        };
-
-        await s3Client.PutCORSConfigurationAsync(putCorsRequest);
-    }
 }
