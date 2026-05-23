@@ -18,13 +18,15 @@ public class BookingService : IBookingService
     private readonly IBookingStatesRepository _bookingStatesRepository;
     private readonly IBookingPublisher _publishEndpoint;
     private readonly IUserContext _userContext;
+    private readonly TimeProvider _timeProvider;
     
-    public BookingService(IBookingRepository bookingRepository, IBookingStatesRepository bookingStatesRepository, IUserContext userContext, IBookingPublisher publishEndpoint)
+    public BookingService(IBookingRepository bookingRepository, IBookingStatesRepository bookingStatesRepository, IUserContext userContext, IBookingPublisher publishEndpoint, TimeProvider timeProvider)
     {
         _bookingRepository = bookingRepository;
         _bookingStatesRepository = bookingStatesRepository;
         _userContext = userContext;
         _publishEndpoint = publishEndpoint;
+        _timeProvider = timeProvider;
     }
 
     public async Task<CreatingBookingResponse> CreateAsync(CreateBookingDto dto, CancellationToken ct)
@@ -68,6 +70,42 @@ public class BookingService : IBookingService
         }
         
         return booking.ToDto();
+    }
+
+    public async Task<List<BookingDto>> GetAllCompletedByTenantAsync()
+    {
+        if (_userContext.UserId == Guid.Empty)
+        {
+            throw new AuthenticationException("User id is empty.");
+        }   
+        
+        var tenantId = _userContext.UserId;
+        var allBookings = await _bookingRepository.GetAllByTenantAsync(tenantId);
+
+        var todayLocal = DateOnly.FromDateTime(_timeProvider.GetLocalNow().Date);
+
+        return allBookings
+            .Where(b => b.Status == BookingStatus.Confirmed && b.EndDate < todayLocal)
+            .Select(b => b.ToDto())
+            .ToList();
+    }
+
+    public async Task<List<BookingDto>> GetAllCompletedByOwnerAsync()
+    {
+        if (_userContext.UserId == Guid.Empty)
+        {
+            throw new AuthenticationException("User id is empty.");
+        }   
+        
+        var tenantId = _userContext.UserId;
+        var allBookings = await _bookingRepository.GetAllByOwnerAsync(tenantId);
+
+        var todayLocal = DateOnly.FromDateTime(_timeProvider.GetLocalNow().LocalDateTime);
+
+        return allBookings
+            .Where(b => b.Status == BookingStatus.Confirmed && b.EndDate < todayLocal)
+            .Select(b => b.ToDto())
+            .ToList();
     }
 
     public async Task<List<BookingDto>> GetAllByTenantAsync()

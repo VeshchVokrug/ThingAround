@@ -76,6 +76,29 @@ public class BookingController : ControllerBase
         return Ok(grpcResponse.ToDto());
     }
     
+    /// <summary>
+    /// Возвращает список завершенных бронирований текущего пользователя (как арендатора).
+    /// </summary>
+    /// <param name="ct">Токен отмены запроса.</param>
+    [HttpGet("as-tenant/completed")]
+    [ProducesResponseType(typeof(BookingListResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<BookingListDto>> GetCompletedByTenant(CancellationToken ct)
+    {
+        var grpcResponse = await _client.GetCompletedBookingsByTenantAsync(new Empty(),Request.ToAuthorizationMetadata(), cancellationToken: ct);
+        return Ok(grpcResponse.ToDto());
+    }
+    
+    /// <summary>
+    /// Возвращает список завершенных бронирований для владельца объявлений (как арендодателя).
+    /// </summary>
+    /// <param name="ct">Токен отмены запроса.</param>
+    [HttpGet("as-owner/completed")]
+    [ProducesResponseType(typeof(BookingListResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<BookingListDto>> GetCompletedByOwner(CancellationToken ct)
+    {
+        var grpcResponse = await _client.GetCompletedBookingsByOwnerAsync(new Empty(), Request.ToAuthorizationMetadata(), cancellationToken: ct);
+        return Ok(grpcResponse.ToDto());
+    }
     
     /// <summary>
     /// Подтверждает бронирование арендодателем.

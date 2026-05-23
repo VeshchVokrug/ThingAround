@@ -12,6 +12,8 @@ service RentalService{
   rpc GetBooking(GetBookingByIdRequest) returns (Booking);
   rpc GetBookingsByTenant(google.protobuf.Empty) returns (BookingListResponse);
   rpc GetBookingsByOwner(google.protobuf.Empty) returns (BookingListResponse);
+  rpc GetCompletedBookingsByTenant(google.protobuf.Empty) returns (BookingListResponse);
+  rpc GetCompletedBookingsByOwner(google.protobuf.Empty) returns (BookingListResponse);
   rpc ApproveBooking(GetBookingByIdRequest) returns (ApprovalResponse);
   rpc RejectBooking(ChangeStatusWithReasonRequest) returns (ApprovalResponse);
   rpc CancelBooking(ChangeStatusWithReasonRequest) returns (ApprovalResponse);
