@@ -46,7 +46,7 @@ public class ProfileRepository : IProfileRepository
         var updatedRows = await query.ExecuteUpdateAsync(s => s
             .SetProperty(p => p.Name, p => profile.Name ?? p.Name)
             .SetProperty(p => p.Bio, p => profile.Bio ?? p.Bio)
-            .SetProperty(p => p.AvatarUrl, p => profile.AvatarUrl ?? p.AvatarUrl)
+            .SetProperty(p => p.AvatarUrl, p => profile.AvatarUrl)
             .SetProperty(p => p.FavoriteCategories, p => profile.FavoriteCategories ?? p.FavoriteCategories),
             cancellationToken: ct);
 

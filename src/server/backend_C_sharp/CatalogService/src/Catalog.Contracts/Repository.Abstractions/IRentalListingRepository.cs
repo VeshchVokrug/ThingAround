@@ -14,6 +14,7 @@ public interface IRentalListingRepository
     Task<Guid> CreateAsync(RentalListing listing, IEnumerable<DateOnly> busyDates, CancellationToken ct = default);
     Task<bool> GetActivityStatusAsync(Guid listingId, CancellationToken ct = default);
     Task<bool> UpdateAsync(RentalListingDto dto, Guid? ownerId = null, CancellationToken ct = default);
+    Task<bool> RemoveImagesAsync(Guid listingId, Guid userId, IEnumerable<string> imagesUrl, CancellationToken ct = default);
     Task<bool> RemoveAsync(Guid listingId, Guid? ownerId = null, CancellationToken ct = default);
     Task<bool> DeactivateAsync(Guid listingId, Guid? ownerId = null, CancellationToken ct = default);
     Task<bool> ActivateAsync(Guid listingId, Guid? ownerId = null, CancellationToken ct = default);

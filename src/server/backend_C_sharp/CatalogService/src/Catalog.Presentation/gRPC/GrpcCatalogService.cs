@@ -68,6 +68,13 @@ public class GrpcCatalogService : CatalogService.Grpc.CatalogService.CatalogServ
         return new Empty();
     }
 
+    public override async Task<Empty> RemoveImages(RemoveImagesRequest request, ServerCallContext context)
+    {
+        var listingId = ParseGuidOrThrow(request.ListingId);
+        await _rentalListingService.RemoveImagesAsync(listingId, request.ImagesUrls, context.CancellationToken);
+        return new Empty();
+    }
+
     public override async Task<TryReserveSlotsResponse> TryReserveSlots(ReservationSlotsRequest request, ServerCallContext context)
     {
         var success = await _rentalListingService.TryReserveSlotsAsync(request.ToDto(), context.CancellationToken);

@@ -26,6 +26,8 @@ public sealed record CreateProfileRequest
     public string Name { get; init; } = string.Empty;
 
     public string Bio { get; init; } = string.Empty;
+    
+    public string? AvatarUrl { get; init; } = null;
 
     public List<string> FavoriteCategories { get; init; } = [];
 }
@@ -39,7 +41,7 @@ public sealed record UpdateProfileRequest
 
     public string? Bio { get; init; }
 
-    public string? AvatarPath { get; init; }
+    public required string? AvatarUrl { get; init; }
 }
 
 /// <summary>

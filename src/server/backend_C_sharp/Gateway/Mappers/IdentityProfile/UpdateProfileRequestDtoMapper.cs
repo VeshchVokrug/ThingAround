@@ -20,9 +20,9 @@ public static class UpdateProfileRequestDtoMapper
             request.Bio = source.Bio;
         }
 
-        if (source.AvatarPath is not null)
+        if (source.AvatarUrl is not null)
         {
-            request.AvatarPath = source.AvatarPath;
+            request.AvatarUrl = source.AvatarUrl;
         }
 
         return request;

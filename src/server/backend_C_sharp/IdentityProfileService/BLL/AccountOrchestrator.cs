@@ -48,8 +48,8 @@ public class AccountOrchestrator
             Id = userId,
             Name = request.Name,
             Bio = request.Bio,
-            FavoriteCategories = request.FavoriteCategories
-            //TODO Minio s3
+            FavoriteCategories = request.FavoriteCategories,
+            AvatarUrl = request.AvatarUrl
         };
 
         return await _profileManager.CreateAsync(profileDto, ct);
@@ -62,6 +62,15 @@ public class AccountOrchestrator
         profileDto.Id = GetCurrentUserId();
         
         await _profileManager.UpdateAsync(profileDto, ct);
+    }
+
+    public async Task RemoveAvatarAsync(CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        
+        var userId = GetCurrentUserId();
+        
+        await _profileManager.RemoveAvatarAsync(userId, ct);
     }
     
     public async Task AddFavoriteCategoriesAsync(List<string> categories, CancellationToken ct)

@@ -152,6 +152,26 @@ public class RentalListingService : IRentalListingService
         await ExecuteDeactivationAsync(listingId, null, ct);
     }
 
+    public async Task RemoveImagesAsync(Guid listingId, IEnumerable<string> imagesUrls, CancellationToken ct = default)
+    {
+        var currentUserId = _userContext.UserId;
+        await IsOwnerAsync(listingId, currentUserId);
+        
+        var imagesUrlsList = imagesUrls.ToList();
+
+        if (imagesUrlsList.Count == 0)
+        {
+            throw new ArgumentException("Images urls list is empty.");
+        }
+        
+        var success = await _rentalListingRepository.RemoveImagesAsync(listingId, currentUserId, imagesUrlsList, ct);
+
+        if (!success)
+        {
+            throw new ArgumentException("Rental listing doesn't have Image Urls.");
+        }
+    }
+
     public async Task UpdateListingAsync(RentalListingDto dto, CancellationToken ct = default)
     {
         Guid? ownerId = _userContext.IsAdmin ? null : _userContext.UserId;

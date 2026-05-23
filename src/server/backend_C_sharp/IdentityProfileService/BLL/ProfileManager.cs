@@ -57,7 +57,7 @@ public class ProfileManager : IProfileManager
             throw new UserNotFoundException(dto.Id);
         }
     }
-
+    
     public async Task AddFavoriteCategoryAsync(Guid id, List<string> favoriteCategories, CancellationToken ct)
     {
         var profile = await _profileRepository.FindByAccountIdAsync(id, ct);
@@ -78,6 +78,21 @@ public class ProfileManager : IProfileManager
             .ToList();
         
         await _profileRepository.UpdateFavoriteCategoriesAsync(profile.Id, newCategories, ct);
+    }
+
+    public async Task RemoveAvatarAsync(Guid profileId, CancellationToken ct)
+    {
+        var profile = await _profileRepository.FindByAccountIdAsync(profileId, ct);
+        
+        if (profile == null)
+        {
+            throw new UserNotFoundException(profileId);
+        }
+        
+        profile.AvatarUrl = null;
+        var profileDto = profile.ToDto();
+        
+        await _profileRepository.UpdateWithoutReputationAsync(profileDto, ct);
     }
 
     public async Task RemoveFavoriteCategoryAsync(Guid id, List<string> favoriteCategories, CancellationToken ct)

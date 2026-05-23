@@ -8,5 +8,6 @@ public interface IProfileManager
      Task<ProfileDto> CreateAsync(ProfileDto dto, CancellationToken ct);
      Task UpdateAsync(ProfileDto dto, CancellationToken ct);
      Task AddFavoriteCategoryAsync(Guid id, List<string> favoriteCategories, CancellationToken ct);
+     Task RemoveAvatarAsync(Guid profileId, CancellationToken ct);
      Task RemoveFavoriteCategoryAsync(Guid id, List<string> favoriteCategories, CancellationToken ct);
  }

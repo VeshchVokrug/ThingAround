@@ -236,6 +236,38 @@ public class RentalListingRepository : IRentalListingRepository
         return true;
     }
 
+    public async Task<bool> RemoveImagesAsync(Guid listingId, Guid userId, IEnumerable<string> imagesUrl, CancellationToken ct = default)
+    {
+        var rentalListing = await _context.RentalListings
+            .FirstOrDefaultAsync(rl => rl.Id == listingId && rl.OwnerId == userId, ct);
+        
+        if (rentalListing?.ImagesUrls == null)
+        {
+            return false;
+        }
+
+        if (rentalListing.ImagesUrls.Count == 0)
+        {
+            return true;
+        }
+
+        var urlsToRemove = imagesUrl.Intersect(rentalListing.ImagesUrls).ToList();
+
+        if (urlsToRemove.Count == 0)
+        {
+            return false; 
+        }
+        
+        foreach (var url in urlsToRemove)
+        {
+            rentalListing.ImagesUrls.Remove(url);
+        }
+        
+        rentalListing.UpdatedAt = DateTime.UtcNow;
+        
+        return await _context.SaveChangesAsync(ct) > 0;
+    }
+
     public async Task<bool> RemoveAsync(Guid listingId, Guid? ownerId = null, CancellationToken ct = default)
     {
         var query = _context.RentalListings.AsQueryable();

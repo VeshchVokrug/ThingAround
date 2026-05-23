@@ -9,6 +9,7 @@ public sealed class RequestRedisPrefixResolver : IRedisPrefixResolver
         ["identity"] = RedisKeyPrefixes.IdentityProfilePrefix,
         ["catalog"] = RedisKeyPrefixes.CatalogPrefix,
         ["rental"] = RedisKeyPrefixes.RentalPrefix,
+        ["files"] = RedisKeyPrefixes.FilesPrefix,
     };
 
     public bool TryResolvePrefix(HttpRequest request, out string prefix)

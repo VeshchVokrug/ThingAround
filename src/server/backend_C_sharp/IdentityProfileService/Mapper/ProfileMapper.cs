@@ -72,6 +72,7 @@ public static class ProfileMapper
         return new Presentation.Models.CreateProfileRequest(
             Name: request.Name, 
             Bio: request.Bio,
+            AvatarUrl: request.HasAvatarUrl ? request.AvatarUrl : null,
             FavoriteCategories: request.FavoriteCategories.Count != 0
                 ? request.FavoriteCategories.ToList() 
                 : null
@@ -83,7 +84,8 @@ public static class ProfileMapper
         return new ProfileDto
         {
             Name = request.HasName ? request.Name : null,
-            Bio = request.HasBio ? request.Bio : null
+            Bio = request.HasBio ? request.Bio : null,
+            AvatarUrl = request.HasAvatarUrl ? request.AvatarUrl : null,
         };
     }
 }

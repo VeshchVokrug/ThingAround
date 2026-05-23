@@ -11,11 +11,11 @@ public static class CreateProfileRequestDtoMapper
         var request = new IdentityProfileService.Grpc.CreateProfileRequest
         {
             Name = source.Name,
-            Bio = source.Bio
+            Bio = source.Bio,
+            AvatarUrl = source.AvatarUrl,
         };
 
         request.FavoriteCategories.AddRange(source.FavoriteCategories);
         return request;
     }
 }
-

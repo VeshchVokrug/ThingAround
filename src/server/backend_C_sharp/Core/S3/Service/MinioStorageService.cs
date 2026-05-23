@@ -30,7 +30,8 @@ public class MinioStorageService : IS3StorageService
             Key = objectKey,
             Verb = HttpVerb.PUT,
             Expires = DateTime.UtcNow.AddMinutes(expirationMinutes),
-            ContentType = contentType 
+            ContentType = contentType,
+            Protocol = _options.UseHttp ? Protocol.HTTP : Protocol.HTTPS 
         };
 
         var internalUrl = _s3Client.GetPreSignedURL(request);
