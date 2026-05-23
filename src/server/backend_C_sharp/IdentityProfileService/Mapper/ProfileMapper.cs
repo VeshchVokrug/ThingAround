@@ -16,6 +16,7 @@ public static class ProfileMapper
             AvatarUrl = profile.AvatarUrl,
             Reputation = profile.Reputation,
             FavoriteCategories = profile.FavoriteCategories,
+            PhoneNumber = profile.PhoneNumber
         };
     }
 
@@ -29,6 +30,7 @@ public static class ProfileMapper
             AvatarUrl = dto.AvatarUrl,
             Reputation = dto.Reputation,
             FavoriteCategories = dto.FavoriteCategories,
+            PhoneNumber = dto.PhoneNumber
         };
     }
 
@@ -43,6 +45,7 @@ public static class ProfileMapper
         if (dto.Name != null) response.Name = dto.Name;
         if (dto.Bio != null) response.Bio = dto.Bio;
         if (dto.AvatarUrl != null) response.AvatarUrl = dto.AvatarUrl;
+        if (dto.PhoneNumber != null) response.PhoneNumber = dto.PhoneNumber;
 
         if (dto.FavoriteCategories != null && dto.FavoriteCategories.Count != 0)
         {
@@ -63,6 +66,7 @@ public static class ProfileMapper
         if (dto.Name != null) response.Name = dto.Name;
         if (dto.Bio != null) response.Bio = dto.Bio;
         if (dto.AvatarUrl != null) response.AvatarUrl = dto.AvatarUrl;
+        if (dto.PhoneNumber != null) response.PhoneNumber = dto.PhoneNumber;
 
         return response;
     }
@@ -73,6 +77,7 @@ public static class ProfileMapper
             Name: request.Name, 
             Bio: request.Bio,
             AvatarUrl: request.HasAvatarUrl ? request.AvatarUrl : null,
+            PhoneNumber: request.HasPhoneNumber ? request.PhoneNumber : null,
             FavoriteCategories: request.FavoriteCategories.Count != 0
                 ? request.FavoriteCategories.ToList() 
                 : null
@@ -86,6 +91,7 @@ public static class ProfileMapper
             Name = request.HasName ? request.Name : null,
             Bio = request.HasBio ? request.Bio : null,
             AvatarUrl = request.HasAvatarUrl ? request.AvatarUrl : null,
+            PhoneNumber = request.HasPhoneNumber ? request.PhoneNumber : null,
         };
     }
 }

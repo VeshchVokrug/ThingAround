@@ -57,6 +57,7 @@ message PublicProfileResponse {
   optional string bio = 3;
   optional string avatar_url = 4;
   double reputation = 5;
+  optional string phone_number = 6;
 }
 
 message PersonalProfileResponse {
@@ -65,7 +66,8 @@ message PersonalProfileResponse {
   optional string bio = 3;
   optional string avatar_url = 4;
   double reputation = 5;
-  repeated string favorite_categories = 6;
+  optional string phone_number = 6;
+  repeated string favorite_categories = 7;
 }
 
 message CreateProfileRequest {
@@ -73,12 +75,14 @@ message CreateProfileRequest {
   string bio = 2;
   optional string avatar_url = 3;
   repeated string favorite_categories = 4;
+  optional string phone_number = 5;
 }
 
 message UpdateProfileRequest {
   optional string name = 1;
   optional string bio = 2;
   optional string avatar_url = 3;
+  optional string phone_number = 4;
 }
 
 message CategoriesRequest {

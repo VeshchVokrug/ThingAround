@@ -49,7 +49,8 @@ public class AccountOrchestrator
             Name = request.Name,
             Bio = request.Bio,
             FavoriteCategories = request.FavoriteCategories,
-            AvatarUrl = request.AvatarUrl
+            AvatarUrl = request.AvatarUrl,
+            PhoneNumber = request.PhoneNumber,
         };
 
         return await _profileManager.CreateAsync(profileDto, ct);

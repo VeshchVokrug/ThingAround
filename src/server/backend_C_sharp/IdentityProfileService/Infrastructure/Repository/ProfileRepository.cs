@@ -47,7 +47,8 @@ public class ProfileRepository : IProfileRepository
             .SetProperty(p => p.Name, p => profile.Name ?? p.Name)
             .SetProperty(p => p.Bio, p => profile.Bio ?? p.Bio)
             .SetProperty(p => p.AvatarUrl, p => profile.AvatarUrl)
-            .SetProperty(p => p.FavoriteCategories, p => profile.FavoriteCategories ?? p.FavoriteCategories),
+            .SetProperty(p => p.FavoriteCategories, p => profile.FavoriteCategories ?? p.FavoriteCategories)
+            .SetProperty(p => p.PhoneNumber, p => profile.PhoneNumber ?? p.PhoneNumber),
             cancellationToken: ct);
 
         return updatedRows > 0;

@@ -14,7 +14,8 @@ public static class ProfileResponseMapper
             Bio = source.HasBio ? source.Bio : null,
             AvatarUrl = source.HasAvatarUrl ? source.AvatarUrl : null,
             Reputation = source.Reputation,
-            FavoriteCategories = source.FavoriteCategories.ToList()
+            FavoriteCategories = source.FavoriteCategories.ToList(),
+            PhoneNumber = source.PhoneNumber
         };
     }
 
@@ -26,7 +27,8 @@ public static class ProfileResponseMapper
             Name = source.HasName ? source.Name : null,
             Bio = source.HasBio ? source.Bio : null,
             AvatarUrl = source.HasAvatarUrl ? source.AvatarUrl : null,
-            Reputation = source.Reputation
+            Reputation = source.Reputation,
+            PhoneNumber = source.PhoneNumber
         };
     }
 }

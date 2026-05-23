@@ -25,6 +25,11 @@ public static class UpdateProfileRequestDtoMapper
             request.AvatarUrl = source.AvatarUrl;
         }
 
+        if (source.PhoneNumber is not null)
+        {
+            request.PhoneNumber = source.PhoneNumber;
+        }
+        
         return request;
     }
 }

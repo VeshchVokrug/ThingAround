@@ -8,6 +8,8 @@ public class ProfileDto
 
     public string? Bio { get; set; }
     
+    public string? PhoneNumber { get; set; }
+    
     public string? AvatarUrl { get; set; }
     
     public decimal? Reputation { get; set; }
