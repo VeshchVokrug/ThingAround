@@ -1,4 +1,8 @@
-﻿using Gateway.Mappers.Catalog;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using CatalogService.Grpc;
+using Core.S3.Service;
+using Gateway.Mappers.Catalog;
 using Gateway.Mappers.IdentityProfile;
 using Gateway.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -24,10 +28,12 @@ namespace Gateway.Controllers.Catalog;
 public class RentalListingController : ControllerBase
 {
     private readonly CatalogClient _client;
-
-    public RentalListingController(CatalogClient client)
+    private readonly IS3StorageService _storageService;
+    
+    public RentalListingController(CatalogClient client, IS3StorageService storageService)
     {
         _client = client;
+        _storageService = storageService;
     }
 
     /// <summary>
@@ -136,6 +142,57 @@ public class RentalListingController : ControllerBase
         };
 
         await _client.RemoveRentalListingAsync(request, Request.ToAuthorizationMetadata(), cancellationToken: ct);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Удаляет изображения объявления.
+    /// </summary>
+    /// <param name="listingId">Идентификатор объявления.</param>
+    /// <param name="imagesUrls">Ссылки на изображения.</param>
+    /// <param name="ct">Токен отмены запроса.</param>
+    [HttpDelete("{listingId}/images")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RemoveImages(string listingId, [FromQuery] List<String> imagesUrls,
+        CancellationToken ct)
+    {
+        if (imagesUrls.Count == 0)
+        {
+            return BadRequest("Не указаны URL изображений для удаления.");
+        }
+        
+        var request = new RemoveImagesRequest
+        {
+            ListingId = listingId,
+            ImagesUrls = { imagesUrls }
+        };
+        
+        await _client.RemoveImagesAsync(request, Request.ToAuthorizationMetadata(),
+            cancellationToken: ct);
+        
+        var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+
+        var expectedPrefix = $"users/{userId}/catalog/";
+
+        foreach (var url in request.ImagesUrls)
+        {
+            var key = _storageService.GetKeyFromUrl(url);
+
+            if (string.IsNullOrEmpty(key))
+            {
+                continue;
+            }
+
+            if (key.StartsWith(expectedPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                if (await _storageService.FileExistsAsync(key))
+                {
+                    await _storageService.DeleteFileAsync(key);
+                }
+            }
+        }
+        
         return NoContent();
     }
 

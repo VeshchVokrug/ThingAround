@@ -1,4 +1,7 @@
-﻿using Gateway.Mappers.IdentityProfile;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Core.S3.Service;
+using Gateway.Mappers.IdentityProfile;
 using Gateway.Models;
 using Google.Protobuf.WellKnownTypes;
 using IdentityProfileService.Grpc;
@@ -21,10 +24,12 @@ namespace Gateway.Controllers.IdentityProfile;
 public class ProfileController : ControllerBase
 {
     private readonly IdentityProfileClient _client;
-
-    public ProfileController(IdentityProfileClient client)
+    private readonly IS3StorageService _storageService;
+    
+    public ProfileController(IdentityProfileClient client, IS3StorageService storageService)
     {
         _client = client;
+        _storageService = storageService;
     }
 
     /// <summary>
@@ -94,6 +99,44 @@ public class ProfileController : ControllerBase
     }
 
     /// <summary>
+    /// Удаляет аватар профиля.
+    /// </summary>
+    /// <param name="avatarUrl">Ссылка на аватар профиля.</param>
+    /// <param name="ct">Токен отмены запроса.</param>
+    [HttpDelete("avatar")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RemoveAvatar([FromQuery] string avatarUrl, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(avatarUrl))
+        {
+            return BadRequest("URL аватара не указан.");
+        }
+        
+        var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        await _client.RemoveAvatarAsync(new Empty(), Request.ToAuthorizationMetadata(), cancellationToken: ct);
+        
+        var expectedPrefix = $"users/{userId}/profile/";
+        var key = _storageService.GetKeyFromUrl(avatarUrl);
+
+        if (!string.IsNullOrEmpty(key) && key.StartsWith(expectedPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            if (await _storageService.FileExistsAsync(key))
+            {
+                await _storageService.DeleteFileAsync(key);
+            }
+        }
+
+        return NoContent();
+    }
+    
+    /// <summary>
     /// Добавляет категории в список избранных категорий пользователя.
     /// </summary>
     /// <param name="request">Список категорий для добавления.</param>
@@ -108,7 +151,7 @@ public class ProfileController : ControllerBase
         var grpcResponse = await _client.AddFavoriteCategoriesAsync(request.ToGrpc(), Request.ToAuthorizationMetadata(), cancellationToken: ct);
         return Ok(grpcResponse.ToPersonalDto());
     }
-
+    
     /// <summary>
     /// Удаляет категории из списка избранных категорий пользователя.
     /// </summary>

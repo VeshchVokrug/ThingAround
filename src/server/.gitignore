@@ -2,6 +2,7 @@
 Db/persistence/
 Redis/Data/
 RabbitMq/Data
+Minio/Data
 
 *.obj
 Protos/obj/

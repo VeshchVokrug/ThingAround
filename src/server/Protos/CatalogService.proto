@@ -18,6 +18,12 @@ service CatalogService {
   rpc UpdateRentalListing(RentalListing) returns (google.protobuf.Empty);
   rpc TryReserveSlots(ReservationSlotsRequest) returns (TryReserveSlotsResponse);
   rpc CancelReservation(ReservationSlotsRequest) returns (google.protobuf.Empty);
+  rpc RemoveImages(RemoveImagesRequest) returns (google.protobuf.Empty);
+}
+
+message RemoveImagesRequest {
+  string listing_id = 1;
+  repeated string images_urls = 2;
 }
 
 message GetRentalListingRequest {

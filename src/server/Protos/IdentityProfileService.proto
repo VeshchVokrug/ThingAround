@@ -18,7 +18,8 @@ service IdentityProfileService {
   rpc GetProfileById(GetProfileByIdRequest) returns (PublicProfileResponse);
   rpc CreateProfile(CreateProfileRequest) returns (PersonalProfileResponse);
   rpc UpdateProfile(UpdateProfileRequest) returns (PersonalProfileResponse);
-
+  rpc RemoveAvatar(google.protobuf.Empty) returns (google.protobuf.Empty);
+  
   // --- Categories Section ---
   rpc AddFavoriteCategories(CategoriesRequest) returns (PersonalProfileResponse);
   rpc RemoveFavoriteCategories(CategoriesRequest) returns (PersonalProfileResponse);
@@ -70,13 +71,14 @@ message PersonalProfileResponse {
 message CreateProfileRequest {
   string name = 1;
   string bio = 2;
-  repeated string favorite_categories = 3;
+  optional string avatar_url = 3;
+  repeated string favorite_categories = 4;
 }
 
 message UpdateProfileRequest {
   optional string name = 1;
   optional string bio = 2;
-  optional string avatar_path = 3;
+  optional string avatar_url = 3;
 }
 
 message CategoriesRequest {

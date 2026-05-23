@@ -81,6 +81,12 @@ public class GrpcIdentityProfileService : IdentityProfileService.Grpc.IdentityPr
         return updatedProfile.ToPersonalGrpc();
     }
 
+    public override async Task<Empty> RemoveAvatar(Empty request, ServerCallContext context)
+    {
+        await _orchestrator.RemoveAvatarAsync(context.CancellationToken);
+        return new Empty();
+    }
+
     // --- Categories Section ---
 
     public override async Task<PersonalProfileResponse> AddFavoriteCategories(CategoriesRequest request, ServerCallContext context)

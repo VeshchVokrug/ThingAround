@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Reflection;
 using System.Text.Json.Serialization;
 using Core.Caching;
+using Core.S3;
 using Gateway.Infrastructure.Auth;
 using Gateway.Infrastructure.Middleware;
 using Gateway.Models;
@@ -28,11 +29,10 @@ public class Program
 		ConfigureGrpcClients(builder.Services, builder.Configuration);
 		ConfigureJwtAuthentication(builder);
 		ConfigureServices(builder.Services, builder.Configuration);
-
 		var app = builder.Build();
 
 		ConfigurePipeline(app);
-
+		
 		await app.RunAsync();
 	}
 
@@ -217,8 +217,8 @@ public class Program
 				};
 			});
 	}
-
-	private static void ConfigureServices(IServiceCollection services, IConfiguration _)
+	
+	private static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
 	{
 		services.AddHttpContextAccessor();
 		services.AddAuthorization();
@@ -227,6 +227,11 @@ public class Program
 		{
 			options.Headers.Add("Authorization");
 		});		
+		
+		services.AddMinioStorage(options =>
+		{
+			configuration.GetSection("Minio").Bind(options);
+		});
 		
 		services.AddSingleton<IRedisPrefixResolver, RequestRedisPrefixResolver>();
 		services.AddScoped<ITokenBlacklistValidator, RedisTokenBlacklistValidator>();

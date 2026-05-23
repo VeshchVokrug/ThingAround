@@ -188,6 +188,7 @@ public sealed record ReservationSlotsRequest
     public List<CatalogCalendarDateDto> Dates { get; init; } = [];
 }
 
+
 /// <summary>
 /// Ответ на попытку бронирования слотов.
 /// </summary>
