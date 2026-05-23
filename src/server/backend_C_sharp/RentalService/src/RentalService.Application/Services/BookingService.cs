@@ -15,15 +15,13 @@ namespace RentalService.Application.Services;
 public class BookingService : IBookingService
 {
     private readonly IBookingRepository _bookingRepository;
-    private readonly IBookingStatesRepository _bookingStatesRepository;
     private readonly IBookingPublisher _publishEndpoint;
     private readonly IUserContext _userContext;
     private readonly TimeProvider _timeProvider;
     
-    public BookingService(IBookingRepository bookingRepository, IBookingStatesRepository bookingStatesRepository, IUserContext userContext, IBookingPublisher publishEndpoint, TimeProvider timeProvider)
+    public BookingService(IBookingRepository bookingRepository, IUserContext userContext, IBookingPublisher publishEndpoint, TimeProvider timeProvider)
     {
         _bookingRepository = bookingRepository;
-        _bookingStatesRepository = bookingStatesRepository;
         _userContext = userContext;
         _publishEndpoint = publishEndpoint;
         _timeProvider = timeProvider;

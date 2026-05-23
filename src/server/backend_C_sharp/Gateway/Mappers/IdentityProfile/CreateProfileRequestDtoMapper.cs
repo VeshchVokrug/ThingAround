@@ -13,6 +13,7 @@ public static class CreateProfileRequestDtoMapper
             Name = source.Name,
             Bio = source.Bio,
             AvatarUrl = source.AvatarUrl,
+            PhoneNumber = source.PhoneNumber,
         };
 
         request.FavoriteCategories.AddRange(source.FavoriteCategories);

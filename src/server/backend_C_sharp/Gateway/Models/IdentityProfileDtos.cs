@@ -28,6 +28,7 @@ public sealed record CreateProfileRequest
     public string Bio { get; init; } = string.Empty;
     
     public string? AvatarUrl { get; init; } = null;
+    public string? PhoneNumber { get; init; } = null;
 
     public List<string> FavoriteCategories { get; init; } = [];
 }
@@ -40,6 +41,7 @@ public sealed record UpdateProfileRequest
     public string? Name { get; init; }
 
     public string? Bio { get; init; }
+    public string? PhoneNumber { get; init; }
 
     public required string? AvatarUrl { get; init; }
 }
@@ -74,6 +76,7 @@ public sealed record ProfileResponse
     public string? Bio { get; init; }
 
     public string? AvatarUrl { get; init; }
+    public string? PhoneNumber { get; init; }
 
     public double Reputation { get; init; }
 
