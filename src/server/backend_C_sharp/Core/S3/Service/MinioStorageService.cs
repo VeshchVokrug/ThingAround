@@ -34,9 +34,21 @@ public class MinioStorageService : IS3StorageService
             Protocol = _options.UseHttp ? Protocol.HTTP : Protocol.HTTPS 
         };
 
-        var internalUrl = _s3Client.GetPreSignedURL(request);
-        var uploadUrl = internalUrl.Replace(_options.Endpoint, _options.ExternalEndpoint);
+        var signingConfig = new AmazonS3Config
+        {
+            ServiceURL = _options.ExternalEndpoint,
+            ForcePathStyle = true,
+            UseHttp = _options.UseHttp
+        };
+        
+        using var signingClient = new AmazonS3Client(_options.AccessKey, _options.SecretKey, signingConfig);
+        
+        // Ссылка сразу сгенерируется под внешний адрес с правильной подписью хоста
+        var uploadUrl = signingClient.GetPreSignedURL(request);
         var publicUrl = $"{_options.ExternalEndpoint}/{_options.BucketName}/{objectKey}";
+        
+        //var uploadUrl = internalUrl.Replace(_options.Endpoint, _options.ExternalEndpoint);
+        //var publicUrl = $"{_options.ExternalEndpoint}/{_options.BucketName}/{objectKey}";
 
         return (uploadUrl, publicUrl);
     }
