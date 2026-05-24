@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace IdentityProfileService.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -167,6 +167,7 @@ namespace IdentityProfileService.Infrastructure.Persistence.Migrations
                     name = table.Column<string>(type: "text", nullable: false),
                     bio = table.Column<string>(type: "text", nullable: false),
                     avatar_url = table.Column<string>(type: "text", nullable: true),
+                    phone_number = table.Column<string>(type: "text", nullable: true),
                     reputation = table.Column<decimal>(type: "numeric(3,2)", precision: 3, scale: 2, nullable: true),
                     favorite_categories = table.Column<string>(type: "jsonb", nullable: true)
                 },
