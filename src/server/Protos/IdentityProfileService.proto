@@ -73,8 +73,8 @@ message PersonalProfileResponse {
 message CreateProfileRequest {
   string name = 1;
   string bio = 2;
-  optional string avatar_url = 3;
-  repeated string favorite_categories = 4;
+  repeated string favorite_categories = 3;
+  optional string avatar_url = 4;
   optional string phone_number = 5;
 }
 

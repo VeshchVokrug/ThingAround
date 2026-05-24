@@ -27,8 +27,8 @@ public sealed record CreateProfileRequest
 
     public string Bio { get; init; } = string.Empty;
     
-    public string? AvatarUrl { get; init; } = null;
-    public string? PhoneNumber { get; init; } = null;
+    public string? AvatarUrl { get; init; }
+    public string? PhoneNumber { get; init; }
 
     public List<string> FavoriteCategories { get; init; } = [];
 }

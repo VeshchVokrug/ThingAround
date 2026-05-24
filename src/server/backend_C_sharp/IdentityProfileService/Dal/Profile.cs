@@ -13,7 +13,7 @@ public class Profile
     
     public string? AvatarUrl { get; set; }
     
-    public string PhoneNumber { get; set; } = "";
+    public string? PhoneNumber { get; set; }
     
     public decimal? Reputation { get; set; }
     

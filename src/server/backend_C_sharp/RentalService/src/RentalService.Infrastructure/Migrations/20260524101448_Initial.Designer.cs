@@ -12,8 +12,8 @@ using RentalService.Infrastructure.Persistence;
 namespace RentalService.Infrastructure.Migrations
 {
     [DbContext(typeof(RentalDbContext))]
-    [Migration("20260520102834_AddOutboxes")]
-    partial class AddOutboxes
+    [Migration("20260524101448_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -260,10 +260,6 @@ namespace RentalService.Infrastructure.Migrations
                         .HasColumnType("bigint")
                         .HasDefaultValue(1L)
                         .HasColumnName("booking_version");
-
-                    b.Property<DateTimeOffset?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("completed_at");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")

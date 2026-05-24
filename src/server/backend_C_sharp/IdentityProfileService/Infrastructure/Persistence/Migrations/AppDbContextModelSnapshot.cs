@@ -136,7 +136,6 @@ namespace IdentityProfileService.Infrastructure.Persistence.Migrations
                         .HasColumnName("name");
 
                     b.Property<string>("PhoneNumber")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("phone_number");
 

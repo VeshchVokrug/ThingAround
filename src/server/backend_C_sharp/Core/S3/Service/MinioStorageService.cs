@@ -43,12 +43,8 @@ public class MinioStorageService : IS3StorageService
         
         using var signingClient = new AmazonS3Client(_options.AccessKey, _options.SecretKey, signingConfig);
         
-        // Ссылка сразу сгенерируется под внешний адрес с правильной подписью хоста
         var uploadUrl = signingClient.GetPreSignedURL(request);
         var publicUrl = $"{_options.ExternalEndpoint}/{_options.BucketName}/{objectKey}";
-        
-        //var uploadUrl = internalUrl.Replace(_options.Endpoint, _options.ExternalEndpoint);
-        //var publicUrl = $"{_options.ExternalEndpoint}/{_options.BucketName}/{objectKey}";
 
         return (uploadUrl, publicUrl);
     }

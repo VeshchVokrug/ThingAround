@@ -15,7 +15,7 @@ public static class ProfileResponseMapper
             AvatarUrl = source.HasAvatarUrl ? source.AvatarUrl : null,
             Reputation = source.Reputation,
             FavoriteCategories = source.FavoriteCategories.ToList(),
-            PhoneNumber = source.PhoneNumber
+            PhoneNumber = source.HasPhoneNumber ? source.PhoneNumber : null
         };
     }
 
