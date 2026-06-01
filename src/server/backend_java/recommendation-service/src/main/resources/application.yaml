@@ -1,13 +1,95 @@
 spring:
   application:
     name: recommendation-service
-  #  datasource:
-  #    url: jdbc:postgresql://localhost:5432/
-  #    username: postgres
-  #    password: postgres
-  #  jpa:
-  #    hibernate:
-  #      ddl-auto: validate
+  autoconfigure:
+    exclude:
+      - org.springframework.cloud.function.context.config.KotlinLambdaToFunctionAutoConfiguration
+
+  # Конфигурация Kafka
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: recommendation-service-group
+      auto-offset-reset: earliest
+      max-poll-records: 500
+      session-timeout-ms: 30000
+    producer:
+      acks: all
+      retries: 3
+
+  # Конфигурация Cloud Stream для функционального consumer
+  cloud:
+    function:
+      definition: handleRecommendationEvent
+      scan:
+        enabled: false
+    stream:
+      kafka:
+        binder:
+          brokers: localhost:9092
+          auto-create-topics: true
+      bindings:
+        handleRecommendationEvent-in-0:
+          destination: recommendation_events
+          group: recommendation-service-group
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-max-interval: 10000
+            back-off-multiplier: 2.0
+
+  # Конфигурация Redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 2000
+      jedis:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+
+  task:
+    scheduling:
+      pool:
+        size: 2
+      thread-name-prefix: recommendation-scheduler-
+      shutdown:
+        await-termination: true
+        await-termination-period: 30s
+
+# Конфигурация сервера
 server:
-  servlet:
-    context-path: /api/v1/recommendations
+  port: 8084
+
+logging:
+  level:
+    root: INFO
+    ru.veshvokrug.recommendation: DEBUG
+    org.springframework.cloud.stream: INFO
+    org.springframework.kafka: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# Конфигурация сервиса рекомендаций
+recommendation:
+  weights:
+    user-interest-half-life-days: 30
+    listing-popularity-half-life-days: 14
+    min-category-weight-threshold: 0.001
+    top-categories-count: 5
+    top-listings-per-category: -1  # Автоматический расчёт по размеру выдачи
+    default-recommendation-size: 20
+    recommendation-cache-ttl-seconds: 300
+
+# Actuator для мониторинга
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
