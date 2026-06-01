@@ -1,6 +1,8 @@
 package ru.veshvokrug.coownership.service;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.veshvokrug.coownership.input.dto.CoownershipListingCreateRequestDto;
@@ -250,6 +252,17 @@ public class ListingService {
 
     public List<ShareApplicationNotification> getOwnerNotifications(UUID ownerId) {
         return notificationService.getNotifications(ownerId);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CoownershipListing> getOpenListings(Pageable pageable) {
+        return coownershipListingRepository.findByStatusOrderByCreatedAtDesc(CoownershipStatus.OPEN, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public CoownershipListing getListingById(UUID listingId) {
+        return coownershipListingRepository.findById(listingId)
+                .orElseThrow(() -> ServiceException.notFound("Листинг не найден"));
     }
 
     private void lockAllListingShares(UUID listingId) {

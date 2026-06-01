@@ -1,10 +1,13 @@
 package ru.veshvokrug.coownership.output.repository;
 
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import ru.veshvokrug.coownership.model.CoownershipStatus;
 import ru.veshvokrug.coownership.model.entity.CoownershipListing;
 
 import java.util.Optional;
@@ -15,6 +18,8 @@ import java.util.UUID;
  */
 public interface CoownershipListingRepository extends JpaRepository<CoownershipListing, UUID> {
 	Optional<CoownershipListing> findByCatalogListingId(UUID catalogListingId);
+
+	Page<CoownershipListing> findByStatusOrderByCreatedAtDesc(CoownershipStatus status, Pageable pageable);
 
 	@Lock(LockModeType.PESSIMISTIC_READ)
 	@Query("""
