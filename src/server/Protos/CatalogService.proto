@@ -1,0 +1,136 @@
+﻿syntax = "proto3";
+
+package catalog.protos;
+
+option csharp_namespace = "CatalogService.Grpc";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+service CatalogService {
+  rpc GetRentalListing(GetRentalListingRequest) returns (RentalListing);
+  rpc GetRentalListings(RentalFilterRequest) returns (PagedRentalListingCardResponse);
+  rpc GetRentalListingsByUser(GetRentalListingsByUserRequest) returns (RentalListingCardsResponse);
+  rpc CreateRentalListing(CreateRentalListingRequest) returns (CreateRentalListingResponse);
+  rpc RemoveRentalListing(GetRentalListingRequest) returns (google.protobuf.Empty);
+  rpc DeactivateRentalListing(GetRentalListingRequest) returns (google.protobuf.Empty);
+  rpc ActivateRentalListing(GetRentalListingRequest) returns (google.protobuf.Empty);
+  rpc UpdateRentalListing(RentalListing) returns (google.protobuf.Empty);
+  rpc TryReserveSlots(ReservationSlotsRequest) returns (TryReserveSlotsResponse);
+  rpc CancelReservation(ReservationSlotsRequest) returns (google.protobuf.Empty);
+  rpc RemoveImages(RemoveImagesRequest) returns (google.protobuf.Empty);
+}
+
+message RemoveImagesRequest {
+  string listing_id = 1;
+  repeated string images_urls = 2;
+}
+
+message GetRentalListingRequest {
+  string listing_id = 1;
+}
+
+message GetRentalListingsByUserRequest {
+  string owner_id = 1;
+}
+
+message CreateRentalListingResponse {
+  string listing_id = 1;
+}
+
+message TryReserveSlotsResponse {
+  bool success = 1;
+}
+
+message RentalFilterRequest {
+  optional string search_term = 1;
+  optional string city = 2;
+  optional string category_slug = 3;
+  optional int32 min_price = 4;
+  optional int32 max_price = 5;
+  optional float min_rating = 6;
+  CalendarDate start_date = 7;
+  CalendarDate end_date = 8;
+  int32 page_number = 9;
+  int32 page_size = 10;
+}
+
+message PagedRentalListingCardResponse {
+  repeated RentalListingCard items = 1;
+  int32 total_count = 2;
+  int32 page_number = 3;
+  int32 page_size = 4;
+  optional string city = 5;
+}
+
+message RentalListingCardsResponse {
+  repeated RentalListingCard items = 1;
+}
+
+message RentalListingCard {
+  string listing_id = 1;
+  string title = 2;
+  string title_slug = 3;
+  optional string image_url = 4;
+  int32 price_per_day = 5;
+  float owner_rating = 6;
+}
+
+message CreateRentalListingRequest {
+  string category_slug = 1;
+  string title = 2;
+  string description = 3;
+  repeated string images_urls = 4;
+  string city = 5;
+  int32 default_price = 6;
+  string manager_id = 7;
+  float manager_rating = 8;
+  string manager_name = 9;
+  string manager_phone = 10;
+  repeated string manager_socials_urls = 11;
+  repeated CalendarDate busy_dates = 12;
+}
+
+message RentalListing {
+  string id = 1;
+  int32 version = 2;
+  string title_slug = 3;
+  string category_slug = 4;
+  string title = 5;
+  string description = 6;
+  repeated string images_urls = 7;
+  string city = 8;
+  int32 default_price = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+  bool is_active = 12;
+  string owner_id = 13;
+  float owner_rating = 14;
+  string owner_name = 15;
+  string owner_phone = 16;
+  repeated string owner_socials_urls = 17;
+  repeated AvailabilitySlot availability_slots = 18;
+}
+
+message AvailabilitySlot {
+  CalendarDate date = 1;
+  int32 version = 2;
+  optional int32 price = 3;
+  google.protobuf.Timestamp reserved_at = 4;
+  bool is_available = 5;
+  bool is_reversible = 6;
+  optional string booking_id = 7;
+}
+
+message ReservationSlotsRequest {
+  string listing_id = 1;
+  repeated CalendarDate dates = 2;
+}
+
+message CalendarDate {
+  int32 year = 1;
+  int32 month = 2;
+  int32 day = 3;
+}
+
+

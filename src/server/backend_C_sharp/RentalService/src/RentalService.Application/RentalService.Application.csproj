@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="MassTransit" Version="8.5.9" />
+      <PackageReference Include="MassTransit.Abstractions" Version="8.5.9" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\Core\Core.csproj" />
+      <ProjectReference Include="..\RentalService.Domain\RentalService.Domain.csproj" />
+      <ProjectReference Include="..\RentalService.Infrastructure.Abstractions\RentalService.Infrastructure.Abstractions.csproj" />
+    </ItemGroup>
+
+</Project>

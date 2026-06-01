@@ -1,0 +1,8 @@
+﻿# Local infrastructure runtime data
+Db/persistence/
+Redis/Data/
+RabbitMq/Data
+Minio/Data
+
+*.obj
+Protos/obj/
