@@ -40,7 +40,7 @@ public class RabbitMQRecommendationEventConsumer {
     public void handleRecommendationEvent(RecommendationEventDto event) {
         try {
             logger.debug("RabbitMQ: Received event - eventId={}, userId={}, eventType={}",
-                    event.getEventId(), event.getUserId(), event.getEventType());
+                    event.eventId(), event.getUserId(), event.getEventType());
 
             // Валидация
             if (event == null || event.getUserId() == null || event.getUserId().isBlank()) {
@@ -54,7 +54,7 @@ public class RabbitMQRecommendationEventConsumer {
             }
 
             if (event.getCategorySlug() == null || event.getCategorySlug().isBlank()) {
-                logger.warn("RabbitMQ: Category slug is null or empty for event {}, skipping", event.getEventId());
+                logger.warn("RabbitMQ: Category slug is null or empty for event {}, skipping", event.eventId());
                 return;
             }
 
@@ -89,7 +89,7 @@ public class RabbitMQRecommendationEventConsumer {
                 }
             }
 
-            logger.debug("RabbitMQ: Successfully processed event - eventId={}", event.getEventId());
+            logger.debug("RabbitMQ: Successfully processed event - eventId={}", event.eventId());
 
         } catch (Exception e) {
             logger.error("RabbitMQ: Error processing event", e);
