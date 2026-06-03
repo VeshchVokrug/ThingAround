@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package rental.protos;
+
+option java_multiple_files = true;
+option java_package = "rental.protos";
+option java_outer_classname = "RentalServiceProto";
+
+// Stub для интеграции с rental-service
+service RentalService {
+  rpc GetBooking(GetBookingRequest) returns (Booking);
+}
+
+message GetBookingRequest {
+  string booking_id = 1;
+}
+
+message Booking {
+  string booking_id = 1;
+  string listing_id = 2;
+  string renter_id = 3;
+  string status = 4;
+}
+

@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package identityprofile.protos;
+
+option java_multiple_files = true;
+option java_package = "identityprofile.protos";
+option java_outer_classname = "IdentityProfileServiceProto";
+
+// Stub для интеграции с identity-profile-service
+service IdentityProfileService {
+  rpc GetUserProfile(GetUserProfileRequest) returns (UserProfile);
+}
+
+message GetUserProfileRequest {
+  string user_id = 1;
+}
+
+message UserProfile {
+  string user_id = 1;
+  repeated string favorite_categories = 2;
+}
+

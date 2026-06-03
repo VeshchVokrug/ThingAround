@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package catalog.protos;
+
+option java_multiple_files = true;
+option java_package = "catalog.protos";
+option java_outer_classname = "CatalogServiceProto";
+
+// Stub для интеграции с catalog-service
+service CatalogService {
+  rpc GetRentalListing(GetRentalListingRequest) returns (RentalListing);
+}
+
+message GetRentalListingRequest {
+  string listing_id = 1;
+}
+
+message RentalListing {
+  string listing_id = 1;
+  string category_slug = 2;
+  string title = 3;
+}
+

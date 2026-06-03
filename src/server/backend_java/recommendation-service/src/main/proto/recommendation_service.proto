@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package recommendation.protos;
+
+option java_multiple_files = true;
+option java_package = "recommendation.protos";
+option java_outer_classname = "RecommendationServiceProto";
+
+// gRPC сервис рекомендаций для интеграции с внешними сервисами (C#, Node.js и т.д.)
+service RecommendationService {
+  // Получить рекомендации для пользователя
+  rpc GetRecommendations(GetRecommendationsRequest) returns (GetRecommendationsResponse);
+
+  // Записать событие в Kafka для обновления рекомендаций
+  rpc PublishRecommendationEvent(PublishRecommendationEventRequest) returns (PublishRecommendationEventResponse);
+}
+
+// Запрос на получение рекомендаций
+message GetRecommendationsRequest {
+  string user_id = 1;      // Обязателен: ID пользователя
+  int32 size = 2;          // Опционально: размер выдачи (если <= 0, используется default)
+}
+
+// Ответ с рекомендациями
+message GetRecommendationsResponse {
+  string user_id = 1;      // ID пользователя
+  repeated string listings = 2;  // Список ID объявлений
+  int32 count = 3;         // Количество рекомендаций
+  int64 timestamp = 4;     // Время формирования в epoch millis
+}
+
+// Запрос на публикацию события рекомендаций
+message PublishRecommendationEventRequest {
+  string event_id = 1;              // Уникальный ID события (UUID)
+  string user_id = 2;               // ID пользователя
+  string event_type = 3;            // Тип события (UserCategoriesUpdated, ListingViewed и т.д.)
+  string category_slug = 4;         // Slug категории
+  optional string listing_id = 5;   // ID объявления (опционально для некоторых типов)
+  int64 timestamp = 6;              // Время события в epoch millis
+}
+
+// Ответ на публикацию события
+message PublishRecommendationEventResponse {
+  bool success = 1;         // Успешно ли события было обработано
+  string message = 2;       // Описание результата
+}
+
