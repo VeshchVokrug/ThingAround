@@ -60,9 +60,34 @@ spring:
         await-termination: true
         await-termination-period: 30s
 
+  # RabbitMQ конфигурация для альтернативной интеграции
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        max-concurrency: 5
+        prefetch: 10
+
 # Конфигурация сервера
 server:
   port: 8084
+
+# gRPC сервер (для интеграции с C#)
+grpc:
+  server:
+    port: 50054
+  catalog:
+    host: localhost
+    port: 50051
+  identity:
+    host: localhost
+    port: 50052
+  rental:
+    host: localhost
+    port: 50053
 
 logging:
   level:
