@@ -9,6 +9,7 @@ namespace Infrastructure.Persistence;
 public class CatalogDbContext : DbContext
 {
     public DbSet<RentalListing> RentalListings => Set<RentalListing>();
+    public DbSet<CoownershipListing> CoownershipListings => Set<CoownershipListing>();
     public DbSet<AvailabilitySlot> AvailabilitySlots => Set<AvailabilitySlot>();
     
     public CatalogDbContext(DbContextOptions<CatalogDbContext> options) : base(options)
@@ -23,6 +24,7 @@ public class CatalogDbContext : DbContext
         modelBuilder.AddTransactionalOutboxEntities();
         
         ConfigureRentalListings(modelBuilder.Entity<RentalListing>());
+        ConfigureCoownershipListings(modelBuilder.Entity<CoownershipListing>());
         ConfigureAvailabilitySlots(modelBuilder.Entity<AvailabilitySlot>());
     }
 
@@ -67,6 +69,34 @@ public class CatalogDbContext : DbContext
             .HasMethod("GIN");
     }
     
+    private void ConfigureCoownershipListings(EntityTypeBuilder<CoownershipListing> builder)
+    {
+        builder.HasKey(x => x.Id);
+        
+        builder.HasIndex(x => x.TitleSlug).IsUnique();
+        
+        builder.HasIndex(x => new { x.City, x.CategorySlug, x.IsActive })
+            .HasDatabaseName("ix_coownership_listings_city_filters");
+        
+        builder.HasIndex(x => new { x.CategorySlug, x.IsActive, x.SharePrice })
+            .HasDatabaseName("ix_coownership_listings_filters");
+        
+        builder.Property(x => x.FundingDeadline)
+            .HasColumnType("date");
+        
+        builder.Property(x => x.CreatedAt)
+            .HasColumnType("timestamp with time zone")
+            .HasDefaultValueSql("now()");
+
+        builder.Property(x => x.UpdatedAt)
+            .HasColumnType("timestamp with time zone")
+            .HasDefaultValueSql("now()");
+
+        builder.Property(x => x.Version)
+            .IsConcurrencyToken()
+            .HasDefaultValue(1);
+    }
+
     private void ConfigureAvailabilitySlots(EntityTypeBuilder<AvailabilitySlot> builder)
     {
         builder.HasKey(x => new { x.ListingId, x.Date });

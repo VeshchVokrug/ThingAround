@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore.Migrations;
 
@@ -6,8 +6,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Infrastructure.Migrations
 {
-    public partial class AddCoownershipListings : Migration
+    /// <inheritdoc />
+    public partial class AddCoownershipListing : Migration
     {
+        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
@@ -15,6 +17,7 @@ namespace Infrastructure.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
+                    version = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
                     title_slug = table.Column<string>(type: "text", nullable: false),
                     owner_id = table.Column<Guid>(type: "uuid", nullable: false),
                     catalog_listing_id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -29,8 +32,7 @@ namespace Infrastructure.Migrations
                     funding_deadline = table.Column<DateOnly>(type: "date", nullable: true),
                     is_active = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
-                    version = table.Column<int>(type: "integer", nullable: false, defaultValue: 1)
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
                 },
                 constraints: table =>
                 {
@@ -43,9 +45,9 @@ namespace Infrastructure.Migrations
                 columns: new[] { "city", "category_slug", "is_active" });
 
             migrationBuilder.CreateIndex(
-                name: "ix_coownership_listings_owner_filters",
+                name: "ix_coownership_listings_filters",
                 table: "coownership_listings",
-                columns: new[] { "owner_id", "is_active" });
+                columns: new[] { "category_slug", "is_active", "share_price" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_coownership_listings_title_slug",
@@ -54,6 +56,7 @@ namespace Infrastructure.Migrations
                 unique: true);
         }
 
+        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
