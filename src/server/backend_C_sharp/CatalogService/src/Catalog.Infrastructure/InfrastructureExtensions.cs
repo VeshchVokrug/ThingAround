@@ -1,4 +1,5 @@
 ﻿using Catalog.Contracts.Repository.Abstractions;
+using Core.Events;
 using Core.SAGA.Contracts.Commands;
 using Core.SAGA.Contracts.Events;
 using Infrastructure.BackgroundWorkers;
@@ -18,6 +19,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IAvailabilitySlotRepository, AvailabilitySlotRepository>();
         services.AddScoped<IRentalListingRepository, RentalListingRepository>();
         services.AddScoped<IListingQueryRepository, ListingQueryRepository>();
+        services.AddScoped<ICoownershipListingRepository, CoownershipListingRepository>();
         
         services.AddHostedService<DailyAvailabilitySlotsWorker>();
         
@@ -37,13 +39,15 @@ public static class InfrastructureExtensions
         
         var catalogEventsExchange = exchanges["CatalogEventsExchange"] ?? throw new NullReferenceException("'CatalogEventsExchange' not found in configuration 'RabbitMQ'.");
         var catalogCommandsExchange = exchanges["CatalogCommandsExchange"] ?? throw new NullReferenceException("'CatalogCommandsExchange' not found in configuration 'RabbitMQ'.");
-
+        var coownershipCommandsExchange = exchanges["CoownershipCommandsExchange"] ??  throw new NullReferenceException("'CoownershipCommands' not found in configuration 'RabbitMQ'.");
+        
         var queue = rmqSection["Queues:CatalogServiceQueue"] ?? throw new NullReferenceException("'Queues' not found in configuration 'RabbitMQ'.");
         
         services.AddMassTransit(cfg =>
         {
             cfg.AddConsumer<ReleaseSlotConsumer>();
             cfg.AddConsumer<ReserveSlotsConsumer>();
+            cfg.AddConsumer<CoownershipListingMessageConsumer>();
             
             cfg.SetKebabCaseEndpointNameFormatter();
             
@@ -63,11 +67,13 @@ public static class InfrastructureExtensions
                 
                 rabbit.Message<ICatalogEvents>(m => m.SetEntityName(catalogEventsExchange));
                 rabbit.Message<ICatalogCommands>(m => m.SetEntityName(catalogCommandsExchange));
+                rabbit.Message<CoownershipListingMessage>(m => m.SetEntityName(coownershipCommandsExchange));
                 
                 rabbit.ReceiveEndpoint(queue, e =>
                 {
                     e.ConfigureConsumer<ReserveSlotsConsumer>(context);
                     e.ConfigureConsumer<ReleaseSlotConsumer>(context);
+                    e.ConfigureConsumer<CoownershipListingMessageConsumer>(context);
                 });
             });
         });

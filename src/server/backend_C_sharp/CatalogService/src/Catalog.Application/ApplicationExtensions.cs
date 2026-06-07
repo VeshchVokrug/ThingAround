@@ -12,6 +12,7 @@ public static class ApplicationExtensions
         services.AddScoped<IRentalListingService, RentalListingService>();
         services.AddScoped<IAvailabilitySlotService, AvailabilitySlotService>();
         services.AddScoped<IUpdateSlotsUseCase, UpdateSlotsUseCase>();
+        services.AddScoped<ICoownershipListingService, CoownershipListingService>();
         
         services.AddSingleton<ISlugHelper>(SlugConfigurator.GetRussianSlugHelper());
         
