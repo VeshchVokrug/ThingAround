@@ -6,7 +6,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Планировщик периодической отправки непрочитанных outbox-сообщений в Kafka.
+ * Планировщик периодической отправки непрочитанных outbox-сообщений в RabbitMQ.
  *
  * @author Dmitrii Marchenko 27.04.2026
  */

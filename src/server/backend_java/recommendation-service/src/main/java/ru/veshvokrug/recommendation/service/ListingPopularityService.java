@@ -3,6 +3,9 @@ package ru.veshvokrug.recommendation.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -24,6 +27,33 @@ public class ListingPopularityService {
     private static final Logger logger = LoggerFactory.getLogger(ListingPopularityService.class);
     private static final String POPULARITY_KEY_PREFIX = "pop:";
     private static final String NO_LISTINGS_MESSAGE = "Для категории {} объявления не найдены";
+
+    /** Атомарный инкремент score с нижней границей 0 (см. UserCategoryWeightService). */
+    private static final RedisScript<String> INCREMENT_CLAMPED_SCRIPT = new DefaultRedisScript<>("""
+            local value = redis.call('ZINCRBY', KEYS[1], ARGV[2], ARGV[1])
+            if tonumber(value) < 0 then
+              redis.call('ZADD', KEYS[1], 0, ARGV[1])
+              return '0'
+            end
+            return value
+            """, String.class);
+
+    /** Атомарное затухание всех score категории. */
+    private static final RedisScript<Long> DECAY_SCRIPT = new DefaultRedisScript<>("""
+            local entries = redis.call('ZRANGE', KEYS[1], 0, -1, 'WITHSCORES')
+            local multiplier = tonumber(ARGV[1])
+            local updated = 0
+            for i = 1, #entries, 2 do
+              local score = tonumber(entries[i + 1])
+              if score then
+                local newScore = score * multiplier
+                if newScore < 0 then newScore = 0 end
+                redis.call('ZADD', KEYS[1], newScore, entries[i])
+                updated = updated + 1
+              end
+            end
+            return updated
+            """, Long.class);
 
     private final StringRedisTemplate redisTemplate;
 
@@ -49,11 +79,11 @@ public class ListingPopularityService {
     public void incrementListingPopularity(String categorySlug, String listingId, double weight) {
         String key = getPopularityKey(categorySlug);
         try {
-            Double newScore = redisTemplate.opsForZSet().incrementScore(key, listingId, weight);
-            if (newScore != null && newScore < 0.0) {
-                redisTemplate.opsForZSet().add(key, listingId, 0.0);
-                newScore = 0.0;
-            }
+            String newScore = redisTemplate.execute(
+                    INCREMENT_CLAMPED_SCRIPT,
+                    List.of(key),
+                    listingId,
+                    String.valueOf(weight));
             logger.debug("Обновлена популярность объявления {} в категории {} до {}",
                     listingId, categorySlug, newScore);
         } catch (Exception e) {
@@ -66,6 +96,11 @@ public class ListingPopularityService {
      * Возвращает топ-M популярных объявлений категории, отсортированных по убыванию.
      */
     public List<String> getTopListings(String categorySlug, int topM) {
+        // Redis-индексы: при topM <= 0 диапазон (0, topM-1) means (0, -1) и
+        // вернул бы ВСЕ объявления категории вместо пустого результата
+        if (topM <= 0) {
+            return new ArrayList<>();
+        }
         String key = getPopularityKey(categorySlug);
         try {
             Set<String> listings = redisTemplate.opsForZSet()
@@ -87,9 +122,12 @@ public class ListingPopularityService {
      * Возвращает топ объявлений с их баллами.
      */
     public Map<String, Double> getTopListingsWithScores(String categorySlug, int topM) {
+        if (topM <= 0) {
+            return new HashMap<>();
+        }
         String key = getPopularityKey(categorySlug);
         try {
-            Set<org.springframework.data.redis.core.ZSetOperations.TypedTuple<String>> scoredListings =
+            Set<ZSetOperations.TypedTuple<String>> scoredListings =
                     redisTemplate.opsForZSet().reverseRangeWithScores(key, 0, (long) topM - 1);
             if (scoredListings == null || scoredListings.isEmpty()) {
                 logger.debug(NO_LISTINGS_MESSAGE, categorySlug);
@@ -97,8 +135,8 @@ public class ListingPopularityService {
             }
             return scoredListings.stream()
                     .collect(Collectors.toMap(
-                            org.springframework.data.redis.core.ZSetOperations.TypedTuple::getValue,
-                            org.springframework.data.redis.core.ZSetOperations.TypedTuple::getScore,
+                            ZSetOperations.TypedTuple::getValue,
+                            ZSetOperations.TypedTuple::getScore,
                             (e1, e2) -> e1,
                             LinkedHashMap::new
                     ));
@@ -114,7 +152,7 @@ public class ListingPopularityService {
     public Map<String, Double> getAllListings(String categorySlug) {
         String key = getPopularityKey(categorySlug);
         try {
-            Set<org.springframework.data.redis.core.ZSetOperations.TypedTuple<String>> allListings =
+            Set<ZSetOperations.TypedTuple<String>> allListings =
                     redisTemplate.opsForZSet().reverseRangeWithScores(key, 0, -1);
             if (allListings == null || allListings.isEmpty()) {
                 logger.debug(NO_LISTINGS_MESSAGE, categorySlug);
@@ -122,8 +160,8 @@ public class ListingPopularityService {
             }
             return allListings.stream()
                     .collect(Collectors.toMap(
-                            org.springframework.data.redis.core.ZSetOperations.TypedTuple::getValue,
-                            org.springframework.data.redis.core.ZSetOperations.TypedTuple::getScore,
+                            ZSetOperations.TypedTuple::getValue,
+                            ZSetOperations.TypedTuple::getScore,
                             (e1, e2) -> e1,
                             LinkedHashMap::new
                     ));
@@ -139,20 +177,12 @@ public class ListingPopularityService {
     public void applyDecay(String categorySlug, double decayMultiplier) {
         String key = getPopularityKey(categorySlug);
         try {
-            Set<org.springframework.data.redis.core.ZSetOperations.TypedTuple<String>> listings =
-                    redisTemplate.opsForZSet().rangeWithScores(key, 0, -1);
-            if (listings == null || listings.isEmpty()) {
-                return;
-            }
-            for (var tuple : listings) {
-                Double score = tuple.getScore();
-                String value = tuple.getValue();
-                if (score != null && value != null) {
-                    double newScore = Math.max(score * decayMultiplier, 0.0);
-                    redisTemplate.opsForZSet().add(key, value, newScore);
-                }
-            }
-            logger.debug("Применён decay {} к объявлениям категории {}", decayMultiplier, categorySlug);
+            Long updated = redisTemplate.execute(
+                    DECAY_SCRIPT,
+                    List.of(key),
+                    String.valueOf(decayMultiplier));
+            logger.debug("Применён decay {} к объявлениям категории {}: обновлено {}",
+                    decayMultiplier, categorySlug, updated);
         } catch (Exception e) {
             logger.error("Ошибка при применении decay к категории {}", categorySlug, e);
         }

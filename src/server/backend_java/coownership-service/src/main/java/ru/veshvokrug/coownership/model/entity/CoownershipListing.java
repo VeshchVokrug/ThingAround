@@ -2,11 +2,14 @@ package ru.veshvokrug.coownership.model.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import ru.veshvokrug.coownership.model.CoownershipStatus;
 import ru.veshvokrug.coownership.model.baseEntity.AuditableEntity;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -48,6 +51,26 @@ public class CoownershipListing extends AuditableEntity {
     @Column(name = "version", nullable = false)
     @Version
     private long version = 0;
+
+    // ---- Карточка для catalog-service ----
+    // Хранится локально, чтобы сервис мог публиковать полное состояние
+    // листинга (контракт CoownershipListingMessage) при любом изменении.
+
+    @Column(name = "title", nullable = false)
+    private String title = "";
+
+    @Column(name = "description", nullable = false)
+    private String description = "";
+
+    @Column(name = "category_slug", nullable = false)
+    private String categorySlug = "";
+
+    @Column(name = "city", nullable = false)
+    private String city = "";
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "images_urls", columnDefinition = "jsonb")
+    private List<String> imagesUrls;
 
     public CoownershipListing() {
     }
@@ -115,5 +138,45 @@ public class CoownershipListing extends AuditableEntity {
 
     public void setVersion(long version) {
         this.version = version;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getCategorySlug() {
+        return categorySlug;
+    }
+
+    public void setCategorySlug(String categorySlug) {
+        this.categorySlug = categorySlug;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public List<String> getImagesUrls() {
+        return imagesUrls;
+    }
+
+    public void setImagesUrls(List<String> imagesUrls) {
+        this.imagesUrls = imagesUrls;
     }
 }

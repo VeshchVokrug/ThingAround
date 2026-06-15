@@ -12,8 +12,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -26,6 +28,8 @@ import java.util.concurrent.TimeUnit;
 public class RecommendationService {
     private static final Logger logger = LoggerFactory.getLogger(RecommendationService.class);
     private static final String CACHE_KEY_PREFIX = "rec:";
+    /** Верхняя граница размера выдачи: защищает Redis от запросов вида size=1000000. */
+    private static final int MAX_RECOMMENDATION_SIZE = 100;
 
     private final UserCategoryWeightService userCategoryWeightService;
     private final ListingPopularityService listingPopularityService;
@@ -59,7 +63,8 @@ public class RecommendationService {
             return Collections.emptyList();
         }
 
-        int actualSize = size > 0 ? size : weightsConfig.getDefaultRecommendationSize();
+        int requestedSize = size > 0 ? size : weightsConfig.getDefaultRecommendationSize();
+        int actualSize = Math.min(requestedSize, MAX_RECOMMENDATION_SIZE);
         String cacheKey = buildCacheKey(userId, actualSize);
 
         List<String> cached = readFromCache(cacheKey);
@@ -102,7 +107,11 @@ public class RecommendationService {
             // Шаг 3: собираем результат round-robin, чтобы категории чередовались.
             List<String> result = collectRoundRobin(listingsByCategory, actualSize);
 
-            writeToCache(cacheKey, result);
+            // Пустую выдачу не кэшируем: иначе первые события пользователя
+            // не влияли бы на рекомендации до истечения TTL кэша
+            if (!result.isEmpty()) {
+                writeToCache(cacheKey, result);
+            }
             logger.debug("Сформировано {} рекомендаций для пользователя {}", result.size(), userId);
             return result;
 
@@ -150,7 +159,8 @@ public class RecommendationService {
     }
 
     private List<String> collectRoundRobin(Map<String, List<String>> listingsByCategory, int limit) {
-        List<String> result = new ArrayList<>(limit);
+        // LinkedHashSet: дедупликация за O(1) с сохранением порядка обхода
+        Set<String> result = new LinkedHashSet<>(limit);
         Map<String, Integer> indexes = new LinkedHashMap<>();
         listingsByCategory.keySet().forEach(category -> indexes.put(category, 0));
 
@@ -166,8 +176,7 @@ public class RecommendationService {
 
                 String listingId = listings.get(index);
                 indexes.put(category, index + 1);
-                if (!result.contains(listingId)) {
-                    result.add(listingId);
+                if (result.add(listingId)) {
                     addedInPass = true;
                     if (result.size() >= limit) {
                         break;
@@ -178,7 +187,7 @@ public class RecommendationService {
                 break;
             }
         }
-        return result;
+        return new ArrayList<>(result);
     }
 }
 

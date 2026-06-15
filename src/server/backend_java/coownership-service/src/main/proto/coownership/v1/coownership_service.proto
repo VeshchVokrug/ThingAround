@@ -18,12 +18,19 @@ service CoownershipService {
 
 message CreateListingRequest {
   reserved 1, 2;
-  reserved "name", "description";
+  reserved "name";
   string catalog_listing_id = 3;
   string price = 4;
   string owner_id = 5;
   int32 total_shares = 6;
   string funding_deadline = 7; // yyyy-MM-dd, optional
+
+  // Карточка для синхронизации с catalog-service
+  string title = 8;
+  string description = 9;
+  string category_slug = 10;
+  string city = 11;
+  repeated string images_urls = 12;
 }
 
 message CreateListingResponse {

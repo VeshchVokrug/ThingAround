@@ -44,6 +44,12 @@ public class Period extends AuditableEntity {
     @Column(name = "status", nullable = false)
     private PeriodStatus status = PeriodStatus.ACTIVE;
 
+    @Column(name = "pending_booking_id")
+    private UUID pendingBookingId;
+
+    @Column(name = "pending_booking_price", precision = 19, scale = 2)
+    private BigDecimal pendingBookingPrice;
+
     public Period() {
     }
 
@@ -85,6 +91,22 @@ public class Period extends AuditableEntity {
 
     public void setTotalIncome(BigDecimal totalIncome) {
         this.totalIncome = totalIncome;
+    }
+
+    public UUID getPendingBookingId() {
+        return pendingBookingId;
+    }
+
+    public void setPendingBookingId(UUID pendingBookingId) {
+        this.pendingBookingId = pendingBookingId;
+    }
+
+    public BigDecimal getPendingBookingPrice() {
+        return pendingBookingPrice;
+    }
+
+    public void setPendingBookingPrice(BigDecimal pendingBookingPrice) {
+        this.pendingBookingPrice = pendingBookingPrice;
     }
 
     public PeriodStatus getStatus() {

@@ -2,6 +2,7 @@ package ru.veshvokrug.coownership.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.veshvokrug.coownership.model.CoownershipStatus;
 import ru.veshvokrug.coownership.model.OwnershipSlotStatus;
 import ru.veshvokrug.coownership.model.PeriodStatus;
 import ru.veshvokrug.coownership.model.entity.CoownershipListing;
@@ -10,7 +11,9 @@ import ru.veshvokrug.coownership.model.entity.OwnershipSlot;
 import ru.veshvokrug.coownership.model.entity.Period;
 import ru.veshvokrug.coownership.output.repository.OwnershipShareRepository;
 import ru.veshvokrug.coownership.output.repository.OwnershipSlotsRepository;
+import ru.veshvokrug.coownership.output.repository.CoownershipListingRepository;
 import ru.veshvokrug.coownership.output.repository.PeriodRepository;
+import ru.veshvokrug.coownership.service.outbox.OutboxEventService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -33,19 +36,22 @@ public class PeriodLifecycleService {
 	private final OutboxEventService outboxEventService;
 	private final SettlementCalculator settlementCalculator;
 	private final Clock clock;
+	private final CoownershipListingRepository coownershipListingRepository;
 
 	public PeriodLifecycleService(PeriodRepository periodRepository,
 								  OwnershipSlotsRepository ownershipSlotsRepository,
 								  OwnershipShareRepository ownershipShareRepository,
 								  OutboxEventService outboxEventService,
 								  SettlementCalculator settlementCalculator,
-								  Clock clock) {
+								  Clock clock,
+								  CoownershipListingRepository coownershipListingRepository) {
 		this.periodRepository = periodRepository;
 		this.ownershipSlotsRepository = ownershipSlotsRepository;
 		this.ownershipShareRepository = ownershipShareRepository;
 		this.outboxEventService = outboxEventService;
 		this.settlementCalculator = settlementCalculator;
 		this.clock = clock;
+		this.coownershipListingRepository = coownershipListingRepository;
 	}
 
 	@Transactional
@@ -86,12 +92,57 @@ public class PeriodLifecycleService {
 	}
 
 	@Transactional
-	public void linkRentalListing(UUID coownershipListingId, UUID rentalListingId) {
-		periodRepository.findByCoownershipListing_IdAndStatus(coownershipListingId, PeriodStatus.ACTIVE)
-				.ifPresent(period -> {
-					period.setRentalListingId(rentalListingId);
-					periodRepository.save(period);
-				});
+	public void linkRentalListing(UUID coownershipListingId, UUID bookingId) {
+		// Fail-fast вместо тихого пропуска: исключение откатывает транзакцию
+		// идемпотентной обработки, и событие уйдёт в ретрай/DLQ. Иначе eventId
+		// помечался бы обработанным, связь терялась навсегда и доход от
+		// бронирований никогда не учитывался бы.
+		Period period = periodRepository
+				.findByCoownershipListing_IdAndStatus(coownershipListingId, PeriodStatus.ACTIVE)
+				.orElseThrow(() -> ServiceException.conflict(
+						"Активный период для листинга " + coownershipListingId
+								+ " не найден — событие будет обработано повторно"));
+		period.setPendingBookingId(bookingId);
+		period.setRentalListingId(bookingId); // временно: перезапишется реальным listingId при Approved
+		periodRepository.save(period);
+	}
+
+	/**
+	 * Связывает ACTIVE-период coownership-листинга с rental-листингом по catalogListingId.
+	 * Используется при RentalBookingRequestedEvent: в контракте приходит ListingId —
+	 * это UUID rental-листинга в каталоге, совпадающий с catalogListingId в нашей БД.
+	 * Одновременно сохраняет bookingId и ожидаемую цену для последующего Approved.
+	 */
+	@Transactional
+	public void linkRentalListingByCatalogId(UUID catalogListingId, UUID bookingId) {
+		CoownershipListing listing = coownershipListingRepository
+				.findByCatalogListingId(catalogListingId)
+				.orElseThrow(() -> ServiceException.conflict(
+						"Листинг совладения с catalogListingId=" + catalogListingId
+								+ " не найден — событие будет обработано повторно"));
+
+		linkRentalListing(listing.getId(), bookingId);
+	}
+
+	/**
+	 * Применяет доход от подтверждённого бронирования.
+	 * Вызывается при RentalBookingApprovedEvent: все детали берутся из period,
+	 * сохранённого при linkRentalListingByCatalogId.
+	 */
+	@Transactional
+	public void applyBookingApproved(UUID bookingId) {
+		Period period = periodRepository
+				.findByPendingBookingIdAndStatus(bookingId, PeriodStatus.ACTIVE)
+				.orElseThrow(() -> ServiceException.conflict(
+						"Период с pendingBookingId=" + bookingId
+								+ " не найден — событие будет обработано повторно"));
+
+		applyBookingConfirmed(
+				period.getRentalListingId(),
+				period.getStartDate(),
+				period.getEndDate(),
+				period.getPendingBookingPrice()
+		);
 	}
 
 	@Transactional
@@ -104,7 +155,15 @@ public class PeriodLifecycleService {
 				.ifPresent(period -> {
 					List<OwnershipSlot> slots = ownershipSlotsRepository
 							.findByPeriod_IdAndDateBetweenOrderByDateAsc(period.getId(), startDate, endDate);
-					if (slots.isEmpty()) {
+
+					// Бронируются только FOR_RENT-слоты: PERSONAL_USE не сдаётся,
+					// а уже BOOKED нельзя монетизировать повторно — иначе
+					// дублированное событие задвоило бы доход, а владелец
+					// personal-use дня получил бы чужую долю при расчёте
+					List<OwnershipSlot> bookableSlots = slots.stream()
+							.filter(slot -> slot.getStatus() == OwnershipSlotStatus.FOR_RENT)
+							.toList();
+					if (bookableSlots.isEmpty()) {
 						return;
 					}
 
@@ -113,16 +172,16 @@ public class PeriodLifecycleService {
 						return;
 					}
 
-					for (OwnershipSlot slot : slots) {
+					for (OwnershipSlot slot : bookableSlots) {
 						slot.setStatus(OwnershipSlotStatus.BOOKED);
 					}
-					ownershipSlotsRepository.saveAll(slots);
+					ownershipSlotsRepository.saveAll(bookableSlots);
 
 					BigDecimal safePrice = totalPrice == null ? BigDecimal.ZERO : totalPrice;
 					BigDecimal normalizedPrice = safePrice.setScale(2, RoundingMode.HALF_UP);
 
 					BigDecimal bookedPrice = normalizedPrice
-							.multiply(BigDecimal.valueOf(slots.size()))
+							.multiply(BigDecimal.valueOf(bookableSlots.size()))
 							.divide(BigDecimal.valueOf(bookingDays), 2, RoundingMode.HALF_UP);
 					period.setTotalIncome(period.getTotalIncome().add(bookedPrice));
 					periodRepository.save(period);
@@ -167,6 +226,11 @@ public class PeriodLifecycleService {
 	}
 
 	private void createNextPeriodFromTemplate(Period settledPeriod) {
+		// У отменённого совладения новые периоды не создаются —
+		// иначе цепочка периодов росла бы бесконечно
+		if (settledPeriod.getCoownershipListing().getStatus() == CoownershipStatus.CANCELLED) {
+			return;
+		}
 		YearMonth nextMonth = YearMonth.from(settledPeriod.getStartDate()).plusMonths(1);
 
 		Period nextPeriod = new Period();

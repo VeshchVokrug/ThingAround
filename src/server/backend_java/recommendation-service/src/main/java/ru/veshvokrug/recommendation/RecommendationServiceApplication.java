@@ -6,7 +6,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Главный класс приложения сервиса рекомендаций.
- * Обрабатывает события активности из Kafka и предоставляет персональные рекомендации.
+ * Обрабатывает события активности из RabbitMQ и предоставляет персональные рекомендации.
  *
  * @author Dmitrii Marchenko
  */

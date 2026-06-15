@@ -32,6 +32,23 @@
         <protobuf.version>3.25.5</protobuf.version>
         <protobuf-plugin.version>0.6.1</protobuf-plugin.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Принудительно фиксируем версию grpc-core для всех транзитивных
+                 зависимостей. Без этого Spring Boot тянет grpc-core отдельной
+                 версии, а grpc-netty-shaded:1.81.0 ищет InternalTcpMetrics
+                 из своей версии — класс не находится, gRPC сервер падает. -->
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-bom</artifactId>
+                <version>${grpc.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -39,7 +56,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-kafka</artifactId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -153,21 +170,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>tools.jackson.core</groupId>
-                <artifactId>jackson-core</artifactId>
-                <version>3.1.1</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.tomcat.embed</groupId>
-                <artifactId>tomcat-embed-core</artifactId>
-                <version>11.0.21</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <build>
         <plugins>

@@ -2,18 +2,18 @@ package ru.veshvokrug.recommendation.consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Bean;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
+import ru.veshvokrug.recommendation.config.RabbitMQConfig;
 import ru.veshvokrug.recommendation.event.EventType;
 import ru.veshvokrug.recommendation.event.RecommendationEventDto;
 import ru.veshvokrug.recommendation.service.ListingPopularityService;
 import ru.veshvokrug.recommendation.service.UserCategoryWeightService;
 
-import java.util.function.Consumer;
-
 /**
- * Kafka consumer для событий рекомендаций на Spring Cloud Stream.
- * Обрабатывает пользовательскую активность и обновляет веса в Redis.
+ * RabbitMQ consumer событий рекомендаций.
+ * Слушает очередь {@code recommendation.events.queue},
+ * обрабатывает пользовательскую активность и обновляет веса в Redis.
  *
  * @author Dmitrii Marchenko
  */
@@ -32,18 +32,17 @@ public class RecommendationEventConsumer {
     }
 
     /**
-     * Функциональный bean consumer для Spring Cloud Stream.
-     * Привязка: spring.cloud.stream.bindings.handleRecommendationEvent-in-0.destination=recommendation_events
+     * Точка входа для сообщений из RabbitMQ.
+     * Некорректные события логируются и пропускаются (без requeue),
+     * чтобы не блокировать очередь.
      */
-    @Bean
-    public Consumer<RecommendationEventDto> handleRecommendationEvent() {
-        return event -> {
-            try {
-                processEvent(event);
-            } catch (Exception e) {
-                logger.error("Ошибка при обработке события рекомендаций: {}", event, e);
-            }
-        };
+    @RabbitListener(queues = RabbitMQConfig.RECOMMENDATION_EVENTS_QUEUE)
+    public void handleRecommendationEvent(RecommendationEventDto event) {
+        try {
+            processEvent(event);
+        } catch (Exception e) {
+            logger.error("Ошибка при обработке события рекомендаций: {}", event, e);
+        }
     }
 
     /**
@@ -123,4 +122,3 @@ public class RecommendationEventConsumer {
         return eventType == EventType.SEARCH_PERFORMED || eventType == EventType.USER_CATEGORIES_UPDATED;
     }
 }
-

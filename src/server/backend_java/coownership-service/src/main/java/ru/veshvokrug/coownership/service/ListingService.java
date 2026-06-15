@@ -1,5 +1,7 @@
 package ru.veshvokrug.coownership.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +15,7 @@ import ru.veshvokrug.coownership.model.entity.CoownershipListing;
 import ru.veshvokrug.coownership.model.entity.OwnershipShare;
 import ru.veshvokrug.coownership.model.entity.ShareApplication;
 import ru.veshvokrug.coownership.model.entity.ShareApplicationNotification;
+import ru.veshvokrug.coownership.output.catalog.CoownershipListingAction;
 import ru.veshvokrug.coownership.output.repository.CoownershipListingRepository;
 import ru.veshvokrug.coownership.output.repository.OwnershipShareRepository;
 import ru.veshvokrug.coownership.output.repository.ShareApplicationRepository;
@@ -21,6 +24,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -34,16 +38,21 @@ public class ListingService {
     private final OwnershipShareRepository ownershipShareRepository;
     private final ShareApplicationRepository shareApplicationRepository;
     private final ShareApplicationEventPublisher shareApplicationEventPublisher;
+    private final CatalogListingSyncPublisher catalogListingSyncPublisher;
     private final ShareApplicationNotificationService notificationService;
     private final ShareApplicationValidator shareApplicationValidator;
     private final PeriodLifecycleService periodLifecycleService;
     private final TransactionalLockService transactionalLockService;
     private final Clock clock;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     public ListingService(CoownershipListingRepository coownershipListingRepository,
                           OwnershipShareRepository ownershipShareRepository,
                           ShareApplicationRepository shareApplicationRepository,
                           ShareApplicationEventPublisher shareApplicationEventPublisher,
+                          CatalogListingSyncPublisher catalogListingSyncPublisher,
                           ShareApplicationNotificationService notificationService,
                           ShareApplicationValidator shareApplicationValidator,
                           PeriodLifecycleService periodLifecycleService,
@@ -53,6 +62,7 @@ public class ListingService {
         this.ownershipShareRepository = ownershipShareRepository;
         this.shareApplicationRepository = shareApplicationRepository;
         this.shareApplicationEventPublisher = shareApplicationEventPublisher;
+        this.catalogListingSyncPublisher = catalogListingSyncPublisher;
         this.notificationService = notificationService;
         this.shareApplicationValidator = shareApplicationValidator;
         this.periodLifecycleService = periodLifecycleService;
@@ -69,6 +79,12 @@ public class ListingService {
                 .findByCatalogListingId(createRequestDto.catalogListingId())
                 .orElse(null);
         if (existingListing != null) {
+            // Идемпотентный повтор допустим только для того же владельца:
+            // иначе чужой вызов получил бы существующий листинг как «свой»
+            if (!Objects.equals(existingListing.getOwnerId(), createRequestDto.ownerId())) {
+                throw ServiceException.conflict(
+                        "Листинг совладения для этого объекта каталога уже создан другим владельцем");
+            }
             return existingListing;
         }
 
@@ -77,6 +93,11 @@ public class ListingService {
         listing.setPrice(createRequestDto.price());
         listing.setOwnerId(createRequestDto.ownerId());
         listing.setTotalShares(createRequestDto.totalShares());
+        listing.setTitle(createRequestDto.title());
+        listing.setDescription(blankToEmpty(createRequestDto.description()));
+        listing.setCategorySlug(createRequestDto.categorySlug());
+        listing.setCity(blankToEmpty(createRequestDto.city()));
+        listing.setImagesUrls(createRequestDto.imagesUrls());
         LocalDate deadline = createRequestDto.fundingDeadline() == null
                 ? LocalDate.now(clock).plusDays(90)
                 : createRequestDto.fundingDeadline();
@@ -96,6 +117,8 @@ public class ListingService {
             shares.add(share);
         }
         ownershipShareRepository.saveAll(shares);
+
+        catalogListingSyncPublisher.publish(CoownershipListingAction.CREATE, savedListing);
 
         return savedListing;
     }
@@ -142,7 +165,10 @@ public class ListingService {
             lockAllListingShares(listing.getId());
             periodLifecycleService.triggerFilledOut(listing);
         }
-        coownershipListingRepository.save(listing);
+        CoownershipListing savedListing = coownershipListingRepository.save(listing);
+        // Публикуем ПОСЛЕ save: @Version увеличивается только в момент flush,
+        // поэтому читаем версию из savedListing, а не из listing до сохранения
+        catalogListingSyncPublisher.publish(CoownershipListingAction.UPDATE, savedListing);
 
         application.setStatus(ShareApplicationStatus.APPROVED);
         ShareApplication approvedApplication = shareApplicationRepository.save(application);
@@ -165,21 +191,29 @@ public class ListingService {
         CoownershipListing listing = coownershipListingRepository.findWithWriteLockingById(listingId)
                 .orElseThrow(() -> ServiceException.notFound("Листинг не найден"));
 
-        if (listing.getStatus() != CoownershipStatus.OPEN) {
-            throw ServiceException.conflict("Листинг уже закрыт для заявок");
-        }
+        shareApplicationValidator.validateCanCreateApplication(listing, requestDto);
 
-        if (listing.getOwnerId().equals(requestDto.applicantId())) {
-            throw ServiceException.badRequest("Владелец не может подать заявку в свой листинг");
-        }
-
-        if (shareApplicationRepository.findByListing_IdAndApplicantId(
+        // Блокируют повторную подачу только PENDING/APPROVED заявки:
+        // после отклонения пользователь может подать заявку снова
+        if (shareApplicationRepository.existsByListing_IdAndApplicantIdAndStatusNot(
                 listingId,
-                requestDto
-                        .applicantId())
-                .isPresent()) {
-            throw ServiceException.conflict("Заявка от этого пользователя уже существует");
+                requestDto.applicantId(),
+                ShareApplicationStatus.REJECTED)) {
+            throw ServiceException.conflict("Активная заявка от этого пользователя уже существует");
         }
+
+        // Unique constraint на (listing_id, applicant_id) — удаляем старую REJECTED
+        // запись и сразу сбрасываем в БД (flush), иначе Hibernate отложит DELETE
+        // до конца транзакции и constraint сработает при вставке новой записи
+        shareApplicationRepository
+                .findByListing_IdAndApplicantIdAndStatus(
+                        listingId,
+                        requestDto.applicantId(),
+                        ShareApplicationStatus.REJECTED)
+                .ifPresent(old -> {
+                    shareApplicationRepository.delete(old);
+                    entityManager.flush();
+                });
 
         long availableShares = ownershipShareRepository
                 .countByCoownershipListing_IdAndOwnerIdIsNull(listingId);
@@ -250,6 +284,66 @@ public class ListingService {
         return rejectedApplication;
     }
 
+    /**
+     * Отменяет листинги, не собравшие доли к дедлайну финансирования.
+     * Вызывается планировщиком; каждый листинг обрабатывается под write-lock
+     * с повторной проверкой условий, чтобы не отменить листинг, который
+     * успел заполниться между выборкой и блокировкой.
+     *
+     * @return количество отменённых листингов
+     */
+    @Transactional
+    public int cancelExpiredListings() {
+        LocalDate today = LocalDate.now(clock);
+        List<CoownershipListing> expired = coownershipListingRepository
+                .findByStatusAndFundingDeadlineBefore(CoownershipStatus.OPEN, today);
+
+        int cancelledCount = 0;
+        for (CoownershipListing candidate : expired) {
+            if (cancelExpiredListing(candidate.getId(), today)) {
+                cancelledCount++;
+            }
+        }
+        return cancelledCount;
+    }
+
+    private boolean cancelExpiredListing(UUID listingId, LocalDate today) {
+        CoownershipListing listing = coownershipListingRepository
+                .findWithWriteLockingById(listingId)
+                .orElse(null);
+        if (listing == null
+                || listing.getStatus() != CoownershipStatus.OPEN
+                || listing.getFundingDeadline() == null
+                || !listing.getFundingDeadline().isBefore(today)) {
+            return false;
+        }
+
+        listing.setStatus(CoownershipStatus.CANCELLED);
+        coownershipListingRepository.save(listing);
+
+        rejectPendingApplications(listing);
+
+        // CANCELLED маппится в isActive=false — карточка в каталоге скроется
+        catalogListingSyncPublisher.publish(CoownershipListingAction.UPDATE, listing);
+        return true;
+    }
+
+    private void rejectPendingApplications(CoownershipListing listing) {
+        List<ShareApplication> pendingApplications = shareApplicationRepository
+                .findByListing_IdAndStatus(listing.getId(), ShareApplicationStatus.PENDING);
+        for (ShareApplication application : pendingApplications) {
+            application.setStatus(ShareApplicationStatus.REJECTED);
+            ShareApplication rejectedApplication = shareApplicationRepository.save(application);
+            notificationService.createNotification(
+                    application.getApplicantId(),
+                    rejectedApplication,
+                    "SHARE_APPLICATION_REJECTED");
+            shareApplicationEventPublisher.publish(
+                    "SHARE_APPLICATION_REJECTED",
+                    rejectedApplication);
+        }
+    }
+
     public List<ShareApplicationNotification> getOwnerNotifications(UUID ownerId) {
         return notificationService.getNotifications(ownerId);
     }
@@ -271,6 +365,10 @@ public class ListingService {
             share.setLocked(true);
         }
         ownershipShareRepository.saveAll(allShares);
+    }
+
+    private static String blankToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private void validateTotalShares(int totalShares) {

@@ -1,42 +1,26 @@
 spring:
   application:
     name: recommendation-service
-  autoconfigure:
-    exclude:
-      - org.springframework.cloud.function.context.config.KotlinLambdaToFunctionAutoConfiguration
 
-  # Конфигурация Kafka
-  kafka:
-    bootstrap-servers: localhost:9092
-    consumer:
-      group-id: recommendation-service-group
-      auto-offset-reset: earliest
-      max-poll-records: 500
-      session-timeout-ms: 30000
-    producer:
-      acks: all
-      retries: 3
-
-  # Конфигурация Cloud Stream для функционального consumer
-  cloud:
-    function:
-      definition: handleRecommendationEvent
-      scan:
-        enabled: false
-    stream:
-      kafka:
-        binder:
-          brokers: localhost:9092
-          auto-create-topics: true
-      bindings:
-        handleRecommendationEvent-in-0:
-          destination: recommendation_events
-          group: recommendation-service-group
-          consumer:
-            max-attempts: 3
-            back-off-initial-interval: 1000
-            back-off-max-interval: 10000
-            back-off-multiplier: 2.0
+  # Конфигурация RabbitMQ — единственный брокер сообщений сервиса
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:admin}
+    password: ${SPRING_RABBITMQ_PASSWORD:admin}
+    listener:
+      simple:
+        max-concurrency: 5
+        prefetch: 10
+        # Не возвращать необработанные сообщения в очередь —
+        # после исчерпания retry они уходят в DLQ
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-interval: 10000
+          multiplier: 2.0
+          max-retries: 3
 
   # Конфигурация Redis
   data:
@@ -59,17 +43,9 @@ spring:
       shutdown:
         await-termination: true
         await-termination-period: 30s
-
-  # RabbitMQ конфигурация для альтернативной интеграции
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
-    listener:
-      simple:
-        max-concurrency: 5
-        prefetch: 10
+  threads:
+    virtual:
+      enabled: true
 
 # Конфигурация сервера
 server:
@@ -93,13 +69,16 @@ logging:
   level:
     root: INFO
     ru.veshvokrug.recommendation: DEBUG
-    org.springframework.cloud.stream: INFO
-    org.springframework.kafka: WARN
+    org.springframework.amqp: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 
 # Конфигурация сервиса рекомендаций
 recommendation:
+  integration:
+    # TTL контекста бронирования (bookingId -> пользователь/листинг/категория),
+    # нужен для маппинга Approved/Cancelled-событий саги, в которых нет listingId
+    booking-context-ttl-days: 90
   weights:
     user-interest-half-life-days: 30
     listing-popularity-half-life-days: 14

@@ -7,8 +7,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -31,32 +33,26 @@ class UserCategoryWeightServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		when(redisTemplate.opsForHash()).thenReturn(hashOperations);
 		service = new UserCategoryWeightService(redisTemplate);
 	}
 
 	@Test
-	void shouldIncrementCategoryAtomically() {
-		when(hashOperations.increment("user:u1:cat_weights", "sports", 0.7)).thenReturn(1.7);
-
+	@SuppressWarnings("unchecked")
+	void shouldIncrementCategoryAtomicallyViaScript() {
+		// Инкремент с clamp до нуля выполняется одним Lua-скриптом,
+		// сами границы проверяются скриптом на стороне Redis
 		service.incrementCategoryWeight("u1", "sports", 0.7);
 
-		verify(hashOperations).increment("user:u1:cat_weights", "sports", 0.7);
-	}
-
-	@Test
-	void shouldClampNegativeCategoryWeightToZero() {
-		when(hashOperations
-				.increment("user:u1:cat_weights", "sports", -5.0))
-				.thenReturn(-1.0);
-
-		service.incrementCategoryWeight("u1", "sports", -5.0);
-
-		verify(hashOperations).put("user:u1:cat_weights", "sports", "0.0");
+		verify(redisTemplate).execute(
+				any(RedisScript.class),
+				eq(List.of("user:u1:cat_weights")),
+				eq("sports"),
+				eq("0.7"));
 	}
 
 	@Test
 	void shouldReturnTopCategoriesSortedByWeight() {
+		when(redisTemplate.opsForHash()).thenReturn(hashOperations);
 		Map<Object, Object> entries = new LinkedHashMap<>();
 		entries.put("tools", "1.5");
 		entries.put("sports", "3.0");
@@ -69,22 +65,24 @@ class UserCategoryWeightServiceTest {
 	}
 
 	@Test
-	void shouldApplyDecayAndCleanup() {
-		Map<Object, Object> entries = new LinkedHashMap<>();
-		entries.put("tools", "0.0005");
-		entries.put("sports", "2.0");
-		when(hashOperations.entries("user:u1:cat_weights")).thenReturn(entries);
+	@SuppressWarnings("unchecked")
+	void shouldApplyDecayAndCleanupViaSingleScript() {
+		when(redisTemplate.execute(any(RedisScript.class), eq(List.of("user:u1:cat_weights")), any(), any()))
+				.thenReturn(1L);
 
-		service.applyDecay("u1", 0.5);
-		service.removeWeightsBelowThreshold("u1", 0.001);
+		long removed = service.applyDecay("u1", 0.5, 0.001);
 
-		verify(hashOperations).put("user:u1:cat_weights", "tools", String.valueOf(0.00025));
-		verify(hashOperations).put("user:u1:cat_weights", "sports", "1.0");
-		verify(hashOperations).delete("user:u1:cat_weights", "tools");
+		assertEquals(1L, removed);
+		verify(redisTemplate).execute(
+				any(RedisScript.class),
+				eq(List.of("user:u1:cat_weights")),
+				eq("0.5"),
+				eq("0.001"));
 	}
 
 	@Test
 	void shouldReturnEmptyWhenRedisFails() {
+		when(redisTemplate.opsForHash()).thenReturn(hashOperations);
 		when(hashOperations.entries("user:u1:cat_weights")).thenThrow(new RuntimeException("redis down"));
 
 		assertTrue(service.getTopCategories("u1", 5).isEmpty());

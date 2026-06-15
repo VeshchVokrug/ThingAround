@@ -2,16 +2,19 @@ package ru.veshvokrug.coownership.model.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import ru.veshvokrug.coownership.model.OutboxDestination;
 import ru.veshvokrug.coownership.model.baseEntity.BaseEntity;
 
 import java.time.Instant;
 
 /**
- * Исходящие события в Kafka
+ * Исходящие сообщения RabbitMQ, публикуемые через outbox
  *
  * @author Dmitrii Marchenko 14.04.2026
  */
@@ -23,6 +26,10 @@ import java.time.Instant;
 public class OutboxMessage extends BaseEntity {
     @Column(name = "event_type", nullable = false)
     private String eventType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "destination", nullable = false)
+    private OutboxDestination destination = OutboxDestination.COOWNERSHIP_EVENTS;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "jsonb")
@@ -41,6 +48,14 @@ public class OutboxMessage extends BaseEntity {
     private String lastError;
 
     public OutboxMessage() {
+    }
+
+    public OutboxDestination getDestination() {
+        return destination;
+    }
+
+    public void setDestination(OutboxDestination destination) {
+        this.destination = destination;
     }
 
     public String getEventType() {

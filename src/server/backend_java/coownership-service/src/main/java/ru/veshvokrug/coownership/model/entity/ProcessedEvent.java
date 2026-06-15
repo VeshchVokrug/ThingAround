@@ -10,7 +10,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Идемпотентность входящих Kafka событий
+ * Идемпотентность входящих событий из RabbitMQ
  *
  * @author Dmitrii Marchenko 14.04.2026
  */
