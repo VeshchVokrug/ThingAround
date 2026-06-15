@@ -72,7 +72,7 @@ public class CoownershipListingService : ICoownershipListingService
 
         if (existingListing != null)
         {
-            if (dto.Version <= existingListing.Version)
+            if (dto.Version < existingListing.Version)
             {
                 _logger.LogInformation(
                     "Skipping update for listing {ListingId}. Incoming version: {IncomingVersion}, Existing version: {ExistingVersion}", 
@@ -121,7 +121,7 @@ public class CoownershipListingService : ICoownershipListingService
                 IsActive = dto.IsActive,
                 CreatedAt = _timeProvider.GetUtcNow().UtcDateTime,
                 UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime,
-                Version = dto.Version
+                Version = 0
             };
 
             if (newListing.OwnerId == Guid.Empty)
