@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.veshvokrug.coownership.input.dto.CoownershipListingCreateRequestDto;
 import ru.veshvokrug.coownership.input.dto.ShareApplicationCreateRequestDto;
+import ru.veshvokrug.coownership.model.CoownershipStatus;
 import ru.veshvokrug.coownership.model.ShareApplicationStatus;
 import ru.veshvokrug.coownership.model.entity.CoownershipListing;
 import ru.veshvokrug.coownership.model.entity.OwnershipShare;
@@ -50,6 +51,9 @@ class ListingServiceTest {
     private ShareApplicationEventPublisher shareApplicationEventPublisher;
 
     @Mock
+    private CatalogListingSyncPublisher catalogListingSyncPublisher;
+
+    @Mock
     private ShareApplicationNotificationService notificationService;
 
     @Mock
@@ -67,6 +71,7 @@ class ListingServiceTest {
                 ownershipShareRepository,
                 shareApplicationRepository,
                 shareApplicationEventPublisher,
+                catalogListingSyncPublisher,
                 notificationService,
                 shareApplicationValidator,
                 periodLifecycleService,
@@ -222,9 +227,42 @@ class ListingServiceTest {
         ListingService service = newService(clock);
 
         UUID catalogListingId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
         CoownershipListing existing = new CoownershipListing();
         existing.setId(UUID.randomUUID());
         existing.setCatalogListingId(catalogListingId);
+        existing.setOwnerId(ownerId);
+        when(coownershipListingRepository
+                .findByCatalogListingId(catalogListingId))
+                .thenReturn(java.util.Optional.of(existing));
+
+        // Идемпотентный повтор: тот же владелец получает существующий листинг
+        CoownershipListingCreateRequestDto request = new CoownershipListingCreateRequestDto(
+                catalogListingId,
+                new BigDecimal("150000.00"),
+                ownerId,
+                10,
+                null
+        );
+
+        CoownershipListing result = service.createListing(request);
+
+        assertThat(result).isEqualTo(existing);
+        verify(transactionalLockService).lock(eq("coownership-listing:" + catalogListingId));
+        verify(coownershipListingRepository, never()).save(any(CoownershipListing.class));
+        verify(ownershipShareRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    void createListingRejectsWhenCatalogListingAlreadyTakenByAnotherOwner() {
+        Clock clock = Clock.fixed(Instant.parse("2026-04-19T00:00:00Z"), ZoneOffset.UTC);
+        ListingService service = newService(clock);
+
+        UUID catalogListingId = UUID.randomUUID();
+        CoownershipListing existing = new CoownershipListing();
+        existing.setId(UUID.randomUUID());
+        existing.setCatalogListingId(catalogListingId);
+        existing.setOwnerId(UUID.randomUUID());
         when(coownershipListingRepository
                 .findByCatalogListingId(catalogListingId))
                 .thenReturn(java.util.Optional.of(existing));
@@ -237,12 +275,10 @@ class ListingServiceTest {
                 null
         );
 
-        CoownershipListing result = service.createListing(request);
-
-        assertThat(result).isEqualTo(existing);
-        verify(transactionalLockService).lock(eq("coownership-listing:" + catalogListingId));
+        assertThatThrownBy(() -> service.createListing(request))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("другим владельцем");
         verify(coownershipListingRepository, never()).save(any(CoownershipListing.class));
-        verify(ownershipShareRepository, never()).saveAll(anyList());
     }
 
     @Test
@@ -259,8 +295,8 @@ class ListingServiceTest {
         listing.setOwnerId(ownerId);
         when(coownershipListingRepository.findWithWriteLockingById(listingId)).thenReturn(Optional.of(listing));
         when(shareApplicationRepository
-                .findByListing_IdAndApplicantId(listingId, applicantId))
-                .thenReturn(Optional.empty());
+                .existsByListing_IdAndApplicantIdAndStatusNot(listingId, applicantId, ShareApplicationStatus.REJECTED))
+                .thenReturn(false);
         when(ownershipShareRepository.countByCoownershipListing_IdAndOwnerIdIsNull(listingId)).thenReturn(4L);
         when(shareApplicationRepository.save(any(ShareApplication.class))).thenAnswer(invocation -> {
             ShareApplication app = invocation.getArgument(0);
@@ -300,8 +336,8 @@ class ListingServiceTest {
         listing.setOwnerId(ownerId);
         when(coownershipListingRepository.findWithWriteLockingById(listingId)).thenReturn(Optional.of(listing));
         when(shareApplicationRepository
-                .findByListing_IdAndApplicantId(listingId, applicantId))
-                .thenReturn(Optional.empty());
+                .existsByListing_IdAndApplicantIdAndStatusNot(listingId, applicantId, ShareApplicationStatus.REJECTED))
+                .thenReturn(false);
         when(ownershipShareRepository.countByCoownershipListing_IdAndOwnerIdIsNull(listingId)).thenReturn(2L);
 
         ShareApplicationCreateRequestDto request = new ShareApplicationCreateRequestDto(applicantId, 3);
@@ -322,12 +358,106 @@ class ListingServiceTest {
         listing.setOwnerId(ownerId);
 
         when(coownershipListingRepository.findWithWriteLockingById(listingId)).thenReturn(Optional.of(listing));
+        // Проверки статуса/владельца консолидированы в валидаторе
+        doThrow(ServiceException.badRequest("Владелец не может подать заявку в свой листинг"))
+                .when(shareApplicationValidator)
+                .validateCanCreateApplication(eq(listing), any(ShareApplicationCreateRequestDto.class));
 
         assertThatThrownBy(() -> service
                 .createShareApplication(listingId,
                         new ShareApplicationCreateRequestDto(ownerId, 1)))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("Владелец не может подать заявку");
+    }
+
+    @Test
+    void createShareApplicationRejectsWhenActiveApplicationExists() {
+        ListingService service = newService(Clock.fixed(Instant.parse("2026-04-19T00:00:00Z"), ZoneOffset.UTC));
+
+        UUID listingId = UUID.randomUUID();
+        UUID applicantId = UUID.randomUUID();
+        CoownershipListing listing = new CoownershipListing();
+        listing.setId(listingId);
+        listing.setOwnerId(UUID.randomUUID());
+
+        when(coownershipListingRepository.findWithWriteLockingById(listingId)).thenReturn(Optional.of(listing));
+        when(shareApplicationRepository
+                .existsByListing_IdAndApplicantIdAndStatusNot(listingId, applicantId, ShareApplicationStatus.REJECTED))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service
+                .createShareApplication(listingId,
+                        new ShareApplicationCreateRequestDto(applicantId, 1)))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("Активная заявка");
+    }
+
+    @Test
+    void cancelExpiredListingsCancelsOpenListingRejectsPendingApplicationsAndSyncsCatalog() {
+        Clock clock = Clock.fixed(Instant.parse("2026-04-19T00:00:00Z"), ZoneOffset.UTC);
+        ListingService service = newService(clock);
+
+        UUID listingId = UUID.randomUUID();
+        UUID applicantId = UUID.randomUUID();
+        CoownershipListing listing = new CoownershipListing();
+        listing.setId(listingId);
+        listing.setOwnerId(UUID.randomUUID());
+        listing.setStatus(CoownershipStatus.OPEN);
+        listing.setFundingDeadline(LocalDate.of(2026, 4, 18));
+
+        ShareApplication pending = new ShareApplication();
+        pending.setId(UUID.randomUUID());
+        pending.setListing(listing);
+        pending.setApplicantId(applicantId);
+        pending.setStatus(ShareApplicationStatus.PENDING);
+
+        when(coownershipListingRepository
+                .findByStatusAndFundingDeadlineBefore(CoownershipStatus.OPEN, LocalDate.of(2026, 4, 19)))
+                .thenReturn(List.of(listing));
+        when(coownershipListingRepository.findWithWriteLockingById(listingId)).thenReturn(Optional.of(listing));
+        when(shareApplicationRepository
+                .findByListing_IdAndStatus(listingId, ShareApplicationStatus.PENDING))
+                .thenReturn(List.of(pending));
+        when(shareApplicationRepository.save(any(ShareApplication.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        int cancelled = service.cancelExpiredListings();
+
+        assertThat(cancelled).isEqualTo(1);
+        assertThat(listing.getStatus()).isEqualTo(CoownershipStatus.CANCELLED);
+        assertThat(pending.getStatus()).isEqualTo(ShareApplicationStatus.REJECTED);
+        verify(notificationService).createNotification(eq(applicantId),
+                any(ShareApplication.class),
+                eq("SHARE_APPLICATION_REJECTED"));
+        verify(shareApplicationEventPublisher).publish(eq("SHARE_APPLICATION_REJECTED"),
+                any(ShareApplication.class));
+        verify(catalogListingSyncPublisher).publish(
+                eq(ru.veshvokrug.coownership.output.catalog.CoownershipListingAction.UPDATE),
+                eq(listing));
+    }
+
+    @Test
+    void cancelExpiredListingsSkipsListingFilledBetweenSelectionAndLock() {
+        Clock clock = Clock.fixed(Instant.parse("2026-04-19T00:00:00Z"), ZoneOffset.UTC);
+        ListingService service = newService(clock);
+
+        UUID listingId = UUID.randomUUID();
+        CoownershipListing listing = new CoownershipListing();
+        listing.setId(listingId);
+        listing.setOwnerId(UUID.randomUUID());
+        listing.setStatus(CoownershipStatus.FILLED);
+        listing.setFundingDeadline(LocalDate.of(2026, 4, 18));
+
+        when(coownershipListingRepository
+                .findByStatusAndFundingDeadlineBefore(CoownershipStatus.OPEN, LocalDate.of(2026, 4, 19)))
+                .thenReturn(List.of(listing));
+        when(coownershipListingRepository.findWithWriteLockingById(listingId)).thenReturn(Optional.of(listing));
+
+        int cancelled = service.cancelExpiredListings();
+
+        assertThat(cancelled).isZero();
+        assertThat(listing.getStatus()).isEqualTo(CoownershipStatus.FILLED);
+        verify(catalogListingSyncPublisher, never()).publish(any(), any());
     }
 
     @Test

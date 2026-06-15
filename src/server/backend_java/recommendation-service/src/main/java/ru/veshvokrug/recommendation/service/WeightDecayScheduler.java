@@ -2,17 +2,27 @@ package ru.veshvokrug.recommendation.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import ru.veshvokrug.recommendation.config.EventWeightsConfig;
 
-import java.time.Instant;
-import java.util.Set;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Планировщик для применения временного затухания весов.
  * Периодически уменьшает влияние устаревших интересов и популярных объявлений.
+ *
+ * Ключи перебираются через SCAN (KEYS блокирует Redis на больших объёмах),
+ * а запуск защищён Redis-локом — при нескольких инстансах сервиса затухание
+ * применяется ровно один раз.
  *
  * @author Dmitrii Marchenko
  */
@@ -21,6 +31,18 @@ public class WeightDecayScheduler {
     private static final Logger logger = LoggerFactory.getLogger(WeightDecayScheduler.class);
     private static final String USER_CATEGORY_PATTERN = "user:*:cat_weights";
     private static final String POPULARITY_PATTERN = "pop:*";
+    private static final String USER_DECAY_LOCK_KEY = "lock:decay:user-categories";
+    private static final String POPULARITY_DECAY_LOCK_KEY = "lock:decay:listing-popularity";
+    private static final Duration LOCK_TTL = Duration.ofMinutes(30);
+    private static final int SCAN_BATCH_SIZE = 500;
+
+    /** Удаляет лок, только если он всё ещё принадлежит этому инстансу. */
+    private static final RedisScript<Long> RELEASE_LOCK_SCRIPT = new DefaultRedisScript<>("""
+            if redis.call('GET', KEYS[1]) == ARGV[1] then
+              return redis.call('DEL', KEYS[1])
+            end
+            return 0
+            """, Long.class);
 
     private final StringRedisTemplate redisTemplate;
     private final EventWeightsConfig weightsConfig;
@@ -44,46 +66,24 @@ public class WeightDecayScheduler {
      */
     @Scheduled(cron = "0 0 0 * * *")
     public void applyUserCategoryDecay() {
-        logger.info("Запускаю задачу затухания весов категорий пользователей");
-        long startTime = System.currentTimeMillis();
-
-        try {
+        runWithLock(USER_DECAY_LOCK_KEY, "затухание весов категорий пользователей", () -> {
             double decayMultiplier = calculateDecayMultiplier(
                     weightsConfig.getUserInterestHalfLifeDays());
-
-            Set<String> keys = redisTemplate.keys(USER_CATEGORY_PATTERN);
-            if (keys == null || keys.isEmpty()) {
-                logger.debug("Нет весов категорий пользователей для затухания");
+            if (decayMultiplier >= 1.0) {
                 return;
             }
+            double threshold = weightsConfig.getMinCategoryWeightThreshold();
 
             int processedUsers = 0;
-            for (String key : keys) {
-                try {
-                    // Извлекаем userId из ключа формата "user:{userId}:cat_weights"
-                    String userId = extractUserIdFromKey(key);
-                    userCategoryWeightService.applyDecay(userId, decayMultiplier);
-
-                    // Удаляем очень маленькие веса, чтобы не копился мусор
-                    int removed = userCategoryWeightService.removeWeightsBelowThreshold(
-                            userId, weightsConfig.getMinCategoryWeightThreshold());
-
-                    if (removed > 0) {
-                        logger.debug("Удалено {} маленьких весов у пользователя {}", removed, userId);
-                    }
-                    processedUsers++;
-                } catch (Exception e) {
-                    logger.error("Ошибка при обработке затухания категорий для ключа {}", key, e);
-                }
+            long removedWeights = 0;
+            for (String key : scanKeys(USER_CATEGORY_PATTERN)) {
+                String userId = extractUserIdFromKey(key);
+                removedWeights += userCategoryWeightService.applyDecay(userId, decayMultiplier, threshold);
+                processedUsers++;
             }
-
-            long duration = System.currentTimeMillis() - startTime;
-            logger.info("Затухание категорий завершено: обработано пользователей {}, {} мс",
-                    processedUsers, duration);
-
-        } catch (Exception e) {
-            logger.error("Ошибка во время затухания весов категорий пользователей", e);
-        }
+            logger.info("Затухание категорий завершено: пользователей {}, удалено малых весов {}",
+                    processedUsers, removedWeights);
+        });
     }
 
     /**
@@ -92,38 +92,57 @@ public class WeightDecayScheduler {
      */
     @Scheduled(cron = "0 0 1 * * *")
     public void applyListingPopularityDecay() {
-        logger.info("Запускаю задачу затухания популярности объявлений");
-        long startTime = System.currentTimeMillis();
-
-        try {
+        runWithLock(POPULARITY_DECAY_LOCK_KEY, "затухание популярности объявлений", () -> {
             double decayMultiplier = calculateDecayMultiplier(
                     weightsConfig.getListingPopularityHalfLifeDays());
-
-            Set<String> keys = redisTemplate.keys(POPULARITY_PATTERN);
-            if (keys == null || keys.isEmpty()) {
-                logger.debug("Нет популярности объявлений для затухания");
+            if (decayMultiplier >= 1.0) {
                 return;
             }
 
             int processedCategories = 0;
-            for (String key : keys) {
-                try {
-                    // Извлекаем categorySlug из ключа формата "pop:{categorySlug}"
-                    String categorySlug = extractCategoryFromKey(key);
-                    listingPopularityService.applyDecay(categorySlug, decayMultiplier);
-                    processedCategories++;
-                } catch (Exception e) {
-                    logger.error("Ошибка при обработке затухания популярности для ключа {}", key, e);
-                }
+            for (String key : scanKeys(POPULARITY_PATTERN)) {
+                listingPopularityService.applyDecay(extractCategoryFromKey(key), decayMultiplier);
+                processedCategories++;
             }
+            logger.info("Затухание популярности завершено: категорий {}", processedCategories);
+        });
+    }
 
-            long duration = System.currentTimeMillis() - startTime;
-            logger.info("Затухание популярности завершено: обработано категорий {}, {} мс",
-                    processedCategories, duration);
-
-        } catch (Exception e) {
-            logger.error("Ошибка во время затухания популярности объявлений", e);
+    private void runWithLock(String lockKey, String taskName, Runnable task) {
+        String lockOwner = UUID.randomUUID().toString();
+        Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey, lockOwner, LOCK_TTL);
+        if (!Boolean.TRUE.equals(acquired)) {
+            logger.info("Пропускаю задачу '{}': лок {} занят другим инстансом", taskName, lockKey);
+            return;
         }
+
+        long startTime = System.currentTimeMillis();
+        logger.info("Запускаю задачу: {}", taskName);
+        try {
+            task.run();
+            logger.info("Задача '{}' выполнена за {} мс", taskName, System.currentTimeMillis() - startTime);
+        } catch (Exception e) {
+            logger.error("Ошибка во время задачи '{}'", taskName, e);
+        } finally {
+            try {
+                redisTemplate.execute(RELEASE_LOCK_SCRIPT, List.of(lockKey), lockOwner);
+            } catch (Exception e) {
+                logger.warn("Не удалось освободить лок {} (истечёт по TTL)", lockKey, e);
+            }
+        }
+    }
+
+    private List<String> scanKeys(String pattern) {
+        List<String> keys = new ArrayList<>();
+        ScanOptions options = ScanOptions.scanOptions().match(pattern).count(SCAN_BATCH_SIZE).build();
+        try (Cursor<String> cursor = redisTemplate.scan(options)) {
+            while (cursor.hasNext()) {
+                keys.add(cursor.next());
+            }
+        } catch (Exception e) {
+            logger.error("Ошибка при SCAN по шаблону {}", pattern, e);
+        }
+        return keys;
     }
 
     /**
@@ -163,4 +182,3 @@ public class WeightDecayScheduler {
         return key.substring("pop:".length());
     }
 }
-

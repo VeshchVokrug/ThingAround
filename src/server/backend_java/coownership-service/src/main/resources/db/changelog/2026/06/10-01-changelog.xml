@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+		xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+					  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-5.0.xsd"
+		objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+
+	<!--
+	    Карточка листинга для синхронизации с catalog-service.
+	    Колонки description, name, price уже существуют (19-01-changelog.xml) —
+	    добавляем только новые: title, category_slug, city, images_urls.
+	-->
+	<changeSet id="20260610-01-coownership-listing-card-fields" author="dmitrii">
+		<addColumn tableName="coownership_listings">
+			<column name="title" type="VARCHAR(255)" defaultValue="">
+				<constraints nullable="false"/>
+			</column>
+			<column name="category_slug" type="VARCHAR(255)" defaultValue="">
+				<constraints nullable="false"/>
+			</column>
+			<column name="city" type="VARCHAR(255)" defaultValue="">
+				<constraints nullable="false"/>
+			</column>
+			<column name="images_urls" type="JSONB"/>
+		</addColumn>
+		<sql>UPDATE coownership_listings SET title = COALESCE(name, '') WHERE title = ''</sql>
+	</changeSet>
+
+	<!-- Назначение outbox-сообщения: COOWNERSHIP_EVENTS или CATALOG_RABBITMQ -->
+	<changeSet id="20260610-02-outbox-destination" author="dmitrii">
+		<addColumn tableName="outbox">
+			<column name="destination" type="VARCHAR(32)" defaultValue="COOWNERSHIP_EVENTS">
+				<constraints nullable="false"/>
+			</column>
+		</addColumn>
+	</changeSet>
+
+	<!--
+	    Контекст бронирования в периоде для маппинга MassTransit-событий.
+	    При RentalBookingRequestedEvent сохраняем bookingId и ожидаемую цену,
+	    чтобы при RentalBookingApprovedEvent найти нужный период без внешнего хранилища.
+	-->
+	<changeSet id="20260610-04-period-pending-booking" author="dmitrii">
+		<addColumn tableName="periods">
+			<column name="pending_booking_id" type="UUID"/>
+			<column name="pending_booking_price" type="DECIMAL(19,2)"/>
+		</addColumn>
+	</changeSet>
+
+</databaseChangeLog>

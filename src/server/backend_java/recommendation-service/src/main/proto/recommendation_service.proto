@@ -11,7 +11,7 @@ service RecommendationService {
   // Получить рекомендации для пользователя
   rpc GetRecommendations(GetRecommendationsRequest) returns (GetRecommendationsResponse);
 
-  // Записать событие в Kafka для обновления рекомендаций
+  // Записать событие в RabbitMQ для обновления рекомендаций
   rpc PublishRecommendationEvent(PublishRecommendationEventRequest) returns (PublishRecommendationEventResponse);
 }
 

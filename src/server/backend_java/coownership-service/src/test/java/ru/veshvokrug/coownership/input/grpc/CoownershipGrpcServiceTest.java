@@ -60,6 +60,11 @@ class CoownershipGrpcServiceTest {
                 .setOwnerId(ownerId.toString())
                 .setTotalShares(6)
                 .setFundingDeadline(LocalDate.now().plusDays(40).toString())
+                .setTitle("Shared Camera")
+                .setDescription("Camera for coownership")
+                .setCategorySlug("electronics")
+                .setCity("Moscow")
+                .addImagesUrls("https://img.example/1.jpg")
                 .build();
 
         @SuppressWarnings("unchecked")
@@ -75,6 +80,10 @@ class CoownershipGrpcServiceTest {
         assertThat(dto.ownerId()).isEqualTo(ownerId);
         assertThat(dto.price()).isEqualByComparingTo(new BigDecimal("150000.00"));
         assertThat(dto.totalShares()).isEqualTo(6);
+        assertThat(dto.title()).isEqualTo("Shared Camera");
+        assertThat(dto.categorySlug()).isEqualTo("electronics");
+        assertThat(dto.city()).isEqualTo("Moscow");
+        assertThat(dto.imagesUrls()).containsExactly("https://img.example/1.jpg");
 
         ArgumentCaptor<CreateListingResponse> responseCaptor = ArgumentCaptor.forClass(CreateListingResponse.class);
         verify(observer).onNext(responseCaptor.capture());
@@ -98,6 +107,8 @@ class CoownershipGrpcServiceTest {
                 .setOwnerId(UUID.randomUUID().toString())
                 .setTotalShares(6)
                 .setFundingDeadline("")
+                .setTitle("Shared Camera")
+                .setCategorySlug("electronics")
                 .build();
 
         @SuppressWarnings("unchecked")

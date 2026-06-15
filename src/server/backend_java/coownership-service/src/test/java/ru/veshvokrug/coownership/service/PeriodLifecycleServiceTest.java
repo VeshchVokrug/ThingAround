@@ -9,9 +9,11 @@ import ru.veshvokrug.coownership.model.entity.CoownershipListing;
 import ru.veshvokrug.coownership.model.entity.OwnershipShare;
 import ru.veshvokrug.coownership.model.entity.OwnershipSlot;
 import ru.veshvokrug.coownership.model.entity.Period;
+import ru.veshvokrug.coownership.output.repository.CoownershipListingRepository;
 import ru.veshvokrug.coownership.output.repository.OwnershipShareRepository;
 import ru.veshvokrug.coownership.output.repository.OwnershipSlotsRepository;
 import ru.veshvokrug.coownership.output.repository.PeriodRepository;
+import ru.veshvokrug.coownership.service.outbox.OutboxEventService;
 
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
@@ -36,6 +38,7 @@ class PeriodLifecycleServiceTest {
     private OwnershipShareRepository ownershipShareRepository;
     private OutboxEventService outboxEventService;
     private PeriodLifecycleService service;
+    private CoownershipListingRepository coownershipListingRepository;
 
     @BeforeEach
     void setUp() {
@@ -50,7 +53,8 @@ class PeriodLifecycleServiceTest {
                 ownershipShareRepository,
                 outboxEventService,
                 new SettlementCalculator(),
-                Clock.fixed(Instant.parse("2026-04-19T00:00:00Z"), ZoneOffset.UTC)
+                Clock.fixed(Instant.parse("2026-04-19T00:00:00Z"), ZoneOffset.UTC),
+                coownershipListingRepository
         );
     }
 
@@ -104,6 +108,70 @@ class PeriodLifecycleServiceTest {
 
         verify(ownershipShareRepository).saveAll(eq(List.of(first, second)));
         verify(outboxEventService).save(eq("COOWNERSHIP_FILLED_OUT"), any());
+    }
+
+    @Test
+    void linkRentalListingLinksActivePeriod() {
+        UUID coownershipListingId = UUID.randomUUID();
+        UUID rentalListingId = UUID.randomUUID();
+        Period period = new Period();
+        period.setId(UUID.randomUUID());
+        when(periodRepository
+                .findByCoownershipListing_IdAndStatus(coownershipListingId, PeriodStatus.ACTIVE))
+                .thenReturn(Optional.of(period));
+
+        service.linkRentalListing(coownershipListingId, rentalListingId);
+
+        assertThat(period.getRentalListingId()).isEqualTo(rentalListingId);
+        verify(periodRepository).save(period);
+    }
+
+    @Test
+    void linkRentalListingThrowsWhenNoActivePeriodSoEventIsRetried() {
+        // Тихий пропуск помечал бы событие обработанным и связь терялась бы
+        // навсегда — исключение откатывает идемпотентную транзакцию
+        UUID coownershipListingId = UUID.randomUUID();
+        when(periodRepository
+                .findByCoownershipListing_IdAndStatus(coownershipListingId, PeriodStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> service.linkRentalListing(coownershipListingId, UUID.randomUUID()))
+                .isInstanceOf(ServiceException.class);
+        verify(periodRepository, never()).save(any(Period.class));
+    }
+
+    @Test
+    void applyBookingConfirmedSkipsPersonalUseAndAlreadyBookedSlots() {
+        UUID rentalListingId = UUID.randomUUID();
+        Period period = new Period();
+        period.setId(UUID.randomUUID());
+        period.setTotalIncome(BigDecimal.ZERO);
+        when(periodRepository
+                .findByRentalListingIdAndStatus(rentalListingId, PeriodStatus.ACTIVE))
+                .thenReturn(Optional.of(period));
+
+        OwnershipSlot forRent = new OwnershipSlot();
+        forRent.setStatus(OwnershipSlotStatus.FOR_RENT);
+        OwnershipSlot personalUse = new OwnershipSlot();
+        personalUse.setStatus(OwnershipSlotStatus.PERSONAL_USE);
+        OwnershipSlot alreadyBooked = new OwnershipSlot();
+        alreadyBooked.setStatus(OwnershipSlotStatus.BOOKED);
+        when(ownershipSlotsRepository.findByPeriod_IdAndDateBetweenOrderByDateAsc(
+                eq(period.getId()), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(List.of(forRent, personalUse, alreadyBooked));
+
+        service.applyBookingConfirmed(
+                rentalListingId,
+                LocalDate.of(2026, 4, 10),
+                LocalDate.of(2026, 4, 12),
+                new BigDecimal("3000.00")
+        );
+
+        // Из 3 дней бронирования монетизирован только FOR_RENT-слот: 3000 * 1/3
+        assertThat(forRent.getStatus()).isEqualTo(OwnershipSlotStatus.BOOKED);
+        assertThat(personalUse.getStatus()).isEqualTo(OwnershipSlotStatus.PERSONAL_USE);
+        assertThat(period.getTotalIncome()).isEqualByComparingTo(new BigDecimal("1000.00"));
     }
 
     @Test

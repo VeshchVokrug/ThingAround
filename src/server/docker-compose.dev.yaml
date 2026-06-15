@@ -73,9 +73,15 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./Db/persistence:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+      - ./Db/init:/docker-entrypoint-initdb.d
     networks:
       - thingaround-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
         
   pgadmin:
     image: dpage/pgadmin4
@@ -220,7 +226,51 @@ services:
       - db
       - redis
       - rabbitmq
+  coownership:
+    build:
+      context: .
+      dockerfile: backend_java/coownership-service/Dockerfile
+    container_name: coownership_service
+    ports:
+      - "8085:8085"
+      - "9091:9091"
+    restart: always
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/coownership_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=admin
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=admin
+      - SPRING_RABBITMQ_PASSWORD=admin
+      - GRPC_SERVER_PORT=9091
+    networks:
+      - thingaround-network
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  recommendation:
+    build:
+      context: .
+      dockerfile: backend_java/recommendation-service/Dockerfile
+    container_name: recommendation_service
+    ports:
+      - "8084:8084"
+      - "50054:50054"
+    restart: always
+    environment:
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=admin
+      - SPRING_RABBITMQ_PASSWORD=admin
+      - SPRING_DATA_REDIS_HOST=redis
   
 networks:
   thingaround-network:
     driver: bridge
+
+volumes:
+  postgres_data:

@@ -1,11 +1,11 @@
 package ru.veshvokrug.coownership.service.outbox;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.springframework.kafka.core.KafkaTemplate;
+import ru.veshvokrug.coownership.model.OutboxDestination;
 import ru.veshvokrug.coownership.model.entity.OutboxMessage;
+import ru.veshvokrug.coownership.output.publisher.CatalogCommandsRabbitMqSender;
+import ru.veshvokrug.coownership.output.publisher.CoownershipEventsRabbitMqSender;
 import ru.veshvokrug.coownership.output.repository.OutboxMessageRepository;
 
 import java.time.Clock;
@@ -13,53 +13,52 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 class OutboxRelayServiceTest {
 
     private OutboxMessageRepository outboxMessageRepository;
-    private KafkaTemplate<String, String> kafkaTemplate;
+    private CoownershipEventsRabbitMqSender coownershipEventsSender;
+    private CatalogCommandsRabbitMqSender catalogCommandsSender;
     private OutboxRelayService service;
 
     @BeforeEach
-    @SuppressWarnings("unchecked")
     void setUp() {
         outboxMessageRepository = mock(OutboxMessageRepository.class);
-        kafkaTemplate = (KafkaTemplate<String, String>) mock(KafkaTemplate.class);
+        coownershipEventsSender = mock(CoownershipEventsRabbitMqSender.class);
+        catalogCommandsSender = mock(CatalogCommandsRabbitMqSender.class);
         service = new OutboxRelayService(
                 outboxMessageRepository,
-                kafkaTemplate,
-                new ObjectMapper(),
+                coownershipEventsSender,
+                catalogCommandsSender,
                 Clock.fixed(Instant.parse("2026-04-27T03:00:00Z"), ZoneOffset.UTC),
-                "coownership-events",
                 100,
                 30
         );
     }
 
     @Test
-    void publishNextBatchPublishesEnvelopeAndMarksMessageAsPublished() {
+    void publishNextBatchSendsDomainEventAndMarksMessageAsPublished() {
         OutboxMessage message = outboxMessage("SHARE_APPLICATION_CREATED", "{\"foo\":\"bar\"}");
         when(outboxMessageRepository
                 .findByPublishedAtIsNullAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAscIdAsc(any(), any()))
                 .thenReturn(List.of(message));
-        when(kafkaTemplate.send(eq("coownership-events"), eq(message.getId().toString()), any(String.class)))
-                .thenReturn(CompletableFuture.completedFuture(null));
 
         int publishedCount = service.publishNextBatch();
 
         assertThat(publishedCount).isEqualTo(1);
-        ArgumentCaptor<String> envelopeCaptor = ArgumentCaptor.forClass(String.class);
-        verify(kafkaTemplate).send(eq("coownership-events"),
-                eq(message.getId().toString()), envelopeCaptor.capture());
-        assertThat(envelopeCaptor.getValue()).contains("\"eventId\":\"" + message.getId() + "\"");
-        assertThat(envelopeCaptor.getValue()).contains("\"eventType\":\"SHARE_APPLICATION_CREATED\"");
-        assertThat(envelopeCaptor.getValue()).contains("\"payload\":{\"foo\":\"bar\"}");
+        verify(coownershipEventsSender).send(
+                message.getId(), "SHARE_APPLICATION_CREATED", "{\"foo\":\"bar\"}");
+        verifyNoInteractions(catalogCommandsSender);
 
         assertThat(message.getPublishedAt()).isEqualTo(Instant.parse("2026-04-27T03:00:00Z"));
         assertThat(message.getLastError()).isNull();
@@ -67,15 +66,30 @@ class OutboxRelayServiceTest {
     }
 
     @Test
-    void publishNextBatchTracksRetryStateWhenKafkaPublishFails() {
+    void publishNextBatchRoutesCatalogMessagesToCatalogSender() {
+        OutboxMessage message = outboxMessage("CATALOG_LISTING_CREATE", "{\"title\":\"x\"}");
+        message.setDestination(OutboxDestination.CATALOG_RABBITMQ);
+        when(outboxMessageRepository
+                .findByPublishedAtIsNullAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAscIdAsc(any(), any()))
+                .thenReturn(List.of(message));
+
+        int publishedCount = service.publishNextBatch();
+
+        assertThat(publishedCount).isEqualTo(1);
+        verify(catalogCommandsSender).send(message.getId(), "{\"title\":\"x\"}");
+        verifyNoInteractions(coownershipEventsSender);
+        assertThat(message.getPublishedAt()).isNotNull();
+    }
+
+    @Test
+    void publishNextBatchTracksRetryStateWhenPublishFails() {
         OutboxMessage message = outboxMessage("SLOT_REASSIGNED", "{\"ok\":true}");
         message.setAttemptCount(1);
         when(outboxMessageRepository
                 .findByPublishedAtIsNullAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAscIdAsc(any(), any()))
                 .thenReturn(List.of(message));
-        when(kafkaTemplate.send(eq("coownership-events"),
-                eq(message.getId().toString()), any(String.class)))
-                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("x".repeat(500))));
+        doThrow(new IllegalStateException("x".repeat(500)))
+                .when(coownershipEventsSender).send(any(UUID.class), anyString(), anyString());
 
         int publishedCount = service.publishNextBatch();
 
@@ -96,4 +110,3 @@ class OutboxRelayServiceTest {
         return message;
     }
 }
-

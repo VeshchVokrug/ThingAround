@@ -2,12 +2,26 @@ spring:
   application:
     name: coownership-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://127.0.0.1:5432/postgres}
     username: ${SPRING_DATASOURCE_USERNAME:admin}
     password: ${SPRING_DATASOURCE_PASSWORD:admin}
     driver-class-name: org.postgresql.Driver
-  kafka:
-    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:admin}
+    password: ${SPRING_RABBITMQ_PASSWORD:admin}
+    listener:
+      simple:
+        # Не возвращать необработанные сообщения в очередь —
+        # после исчерпания retry они уходят в DLQ
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-interval: 10000
+          multiplier: 2.0
+          max-retries: 3
   jpa:
     show-sql: false  # true только при отладке локально
     hibernate:
@@ -24,20 +38,25 @@ spring:
       pool:
         size: 2
       thread-name-prefix: co-ownership-scheduler-
-
+  threads:
+    virtual:
+      enabled: true
 # Scheduler config for notification cleanup
 coownership:
   notification:
     purge-interval-ms: 3600000  # 1 hour in milliseconds
     purge-initial-delay-ms: 60000  # 1 minute initial delay
     storage-retention-days: 30  # Delete notifications older than 30 days
-  kafka:
+  listing:
+    # Время ежедневной отмены листингов с истёкшим дедлайном финансирования (UTC)
+    funding-deadline-cron: ${COOWNERSHIP_FUNDING_DEADLINE_CRON:0 30 2 * * *}
+  rabbitmq:
+    catalog-commands-exchange: ${COOWNERSHIP_RABBITMQ_CATALOG_COMMANDS_EXCHANGE:coownership-commands}
+    events-exchange: ${COOWNERSHIP_RABBITMQ_EVENTS_EXCHANGE:coownership-events}
     inbound:
-      group-id: ${COOWNERSHIP_KAFKA_GROUP_ID:coownership-service}
-      rental-listing-created-topic: ${COOWNERSHIP_KAFKA_RENTAL_LISTING_CREATED_TOPIC:rental-listing-created}
-      booking-confirmed-topic: ${COOWNERSHIP_KAFKA_BOOKING_CONFIRMED_TOPIC:booking-confirmed}
-    outbox:
-      topic: ${COOWNERSHIP_KAFKA_OUTBOX_TOPIC:coownership-events}
+      # Один exchange для всех rental-событий (MassTransit IRentalEvents)
+      rental-events-exchange: ${COOWNERSHIP_RABBITMQ_RENTAL_EVENTS_EXCHANGE:rental-events}
+      rental-events-queue: ${COOWNERSHIP_RABBITMQ_RENTAL_EVENTS_QUEUE:coownership.rental-events}
   outbox:
     relay-interval-ms: ${COOWNERSHIP_OUTBOX_RELAY_INTERVAL_MS:5000}
     batch-size: ${COOWNERSHIP_OUTBOX_BATCH_SIZE:100}
@@ -50,3 +69,6 @@ grpc:
   server:
     enabled: ${GRPC_SERVER_ENABLED:true}
     port: ${GRPC_SERVER_PORT:9091}
+
+server:
+  port: 8085

@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Репозиторий сообщений outbox для последующей публикации в Kafka.
+ * Репозиторий сообщений outbox для последующей публикации в RabbitMQ.
  *
  * @author Dmitrii Marchenko 27.04.2026
  */

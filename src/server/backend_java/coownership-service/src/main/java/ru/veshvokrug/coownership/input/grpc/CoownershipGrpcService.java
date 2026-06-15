@@ -33,14 +33,20 @@ public class CoownershipGrpcService extends CoownershipServiceGrpc.CoownershipSe
     }
 
     @Override
-    public void createListing(CreateListingRequest request, StreamObserver<CreateListingResponse> responseObserver) {
+    public void createListing(CreateListingRequest request,
+                              StreamObserver<CreateListingResponse> responseObserver) {
         handle(responseObserver, () -> {
             CoownershipListingCreateRequestDto dto = new CoownershipListingCreateRequestDto(
                     parseUuid(request.getCatalogListingId(), "catalog_listing_id"),
                     parseBigDecimal(request.getPrice()),
                     parseUuid(request.getOwnerId(), "owner_id"),
                     request.getTotalShares(),
-                    request.getFundingDeadline().isBlank() ? null : parseDate(request.getFundingDeadline())
+                    request.getFundingDeadline().isBlank() ? null : parseDate(request.getFundingDeadline()),
+                    request.getTitle(),
+                    request.getDescription(),
+                    request.getCategorySlug(),
+                    request.getCity(),
+                    request.getImagesUrlsList()
             );
             validate(dto);
             CoownershipListing listing = listingService.createListing(dto);

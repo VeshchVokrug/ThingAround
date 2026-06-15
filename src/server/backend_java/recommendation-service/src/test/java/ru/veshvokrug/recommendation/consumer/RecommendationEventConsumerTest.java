@@ -9,8 +9,6 @@ import ru.veshvokrug.recommendation.event.RecommendationEventDto;
 import ru.veshvokrug.recommendation.service.ListingPopularityService;
 import ru.veshvokrug.recommendation.service.UserCategoryWeightService;
 
-import java.util.function.Consumer;
-
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -35,8 +33,7 @@ class RecommendationEventConsumerTest {
 
     @Test
     void shouldProcessValidEvent() {
-        Consumer<RecommendationEventDto> fn = consumer.handleRecommendationEvent();
-        fn.accept(new RecommendationEventDto(
+        consumer.handleRecommendationEvent(new RecommendationEventDto(
                 "e1",
                 "u1",
                 "ListingFavorited",
@@ -50,8 +47,7 @@ class RecommendationEventConsumerTest {
 
     @Test
     void shouldIgnoreEventWithoutCategory() {
-        Consumer<RecommendationEventDto> fn = consumer.handleRecommendationEvent();
-        fn.accept(new RecommendationEventDto(
+        consumer.handleRecommendationEvent(new RecommendationEventDto(
                 "e1",
                 "u1",
                 "ListingViewed",
@@ -64,8 +60,7 @@ class RecommendationEventConsumerTest {
 
     @Test
     void shouldIgnoreInvalidEvent() {
-        Consumer<RecommendationEventDto> fn = consumer.handleRecommendationEvent();
-        fn.accept(new RecommendationEventDto(
+        consumer.handleRecommendationEvent(new RecommendationEventDto(
                 "",
                 "u1",
                 "ListingViewed",
@@ -78,8 +73,7 @@ class RecommendationEventConsumerTest {
 
     @Test
     void shouldIgnoreUnknownEventType() {
-        Consumer<RecommendationEventDto> fn = consumer.handleRecommendationEvent();
-        fn.accept(new RecommendationEventDto(
+        consumer.handleRecommendationEvent(new RecommendationEventDto(
                 "e1",
                 "u1",
                 "UnknownEvent",
@@ -92,8 +86,7 @@ class RecommendationEventConsumerTest {
 
     @Test
     void shouldUpdateOnlyUserWeightsWhenListingMissing() {
-        Consumer<RecommendationEventDto> fn = consumer.handleRecommendationEvent();
-        fn.accept(new RecommendationEventDto(
+        consumer.handleRecommendationEvent(new RecommendationEventDto(
                 "e1",
                 "u1",
                 "SearchPerformed",
@@ -107,8 +100,7 @@ class RecommendationEventConsumerTest {
 
     @Test
     void shouldIgnoreListingBasedEventWhenListingIsMissing() {
-        Consumer<RecommendationEventDto> fn = consumer.handleRecommendationEvent();
-        fn.accept(new RecommendationEventDto(
+        consumer.handleRecommendationEvent(new RecommendationEventDto(
                 "e1",
                 "u1",
                 "ListingViewed",
@@ -121,8 +113,7 @@ class RecommendationEventConsumerTest {
 
     @Test
     void shouldIgnoreCategoryOnlyEventWhenListingIsPresent() {
-        Consumer<RecommendationEventDto> fn = consumer.handleRecommendationEvent();
-        fn.accept(new RecommendationEventDto(
+        consumer.handleRecommendationEvent(new RecommendationEventDto(
                 "e1",
                 "u1",
                 "SearchPerformed",
@@ -135,10 +126,8 @@ class RecommendationEventConsumerTest {
 
     @Test
     void shouldIgnoreNullEvent() {
-        Consumer<RecommendationEventDto> fn = consumer.handleRecommendationEvent();
-        fn.accept(null);
+        consumer.handleRecommendationEvent(null);
 
         verifyNoInteractions(userCategoryWeightService, listingPopularityService);
     }
 }
-

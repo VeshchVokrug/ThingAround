@@ -2,95 +2,133 @@ package ru.veshvokrug.recommendation.config;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.FanoutExchange;
 import org.springframework.amqp.core.Queue;
-import org.springframework.amqp.rabbit.connection.ConnectionFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Конфигурация RabbitMQ для альтернативной интеграции с внешними сервисами.
- * Используется параллельно с Kafka для обеспечения гибкости при интеграции с C#.
+ * Конфигурация RabbitMQ — единственного брокера сообщений сервиса.
+ * Объявляет топологию (exchange, очереди, биндинги) и JSON-конвертер сообщений.
  *
  * @author Dmitrii Marchenko
  */
 @Configuration
 public class RabbitMQConfig {
 
-    // Очередь для получения событий от C# сервиса
-    public static final String RECOMMENDATION_EVENTS_QUEUE = "recommendation.events.queue";
     public static final String RECOMMENDATION_EVENTS_EXCHANGE = "recommendation.events.exchange";
+    public static final String RECOMMENDATION_EVENTS_QUEUE = "recommendation.events.queue";
     public static final String RECOMMENDATION_EVENTS_ROUTING_KEY = "recommendation.event.*";
 
-    // Очередь для отправки рекомендаций в C# сервис
-    public static final String RECOMMENDATIONS_RESPONSE_QUEUE = "recommendations.response.queue";
-    public static final String RECOMMENDATIONS_RESPONSE_EXCHANGE = "recommendations.response.exchange";
-    public static final String RECOMMENDATIONS_RESPONSE_ROUTING_KEY = "recommendations.response";
+    public static final String RECOMMENDATION_EVENTS_DLX = "recommendation.events.dlx";
+    public static final String RECOMMENDATION_EVENTS_DLQ = "recommendation.events.dlq";
+
+    public static final String RENTAL_EVENTS_EXCHANGE = "rental-events";
+    public static final String RENTAL_EVENTS_QUEUE = "recommendation.rental-events.queue";
+    public static final String RENTAL_EVENTS_DLQ = "recommendation.rental-events.dlq";
 
     /**
-     * Очередь для получения событий от интеграторов (C#, Node.js и т.д.)
+     * Topic Exchange для событий рекомендаций.
+     * Topic (а не Direct), потому что биндинг использует wildcard-ключ
+     * {@code recommendation.event.*} — direct exchange wildcard'ы не поддерживает.
+     */
+    @Bean
+    public TopicExchange recommendationEventsExchange() {
+        return new TopicExchange(RECOMMENDATION_EVENTS_EXCHANGE, true, false);
+    }
+
+    /**
+     * Очередь входящих событий. Необработанные сообщения уходят в DLQ,
+     * а не зацикливаются в очереди.
      */
     @Bean
     public Queue recommendationEventsQueue() {
-        return new Queue(RECOMMENDATION_EVENTS_QUEUE, true, false, false);
+        return QueueBuilder.durable(RECOMMENDATION_EVENTS_QUEUE)
+                .deadLetterExchange(RECOMMENDATION_EVENTS_DLX)
+                .deadLetterRoutingKey(RECOMMENDATION_EVENTS_DLQ)
+                .build();
     }
 
-    /**
-     * Direct Exchange для маршрутизации событий
-     */
-    @Bean
-    public DirectExchange recommendationEventsExchange() {
-        return new DirectExchange(RECOMMENDATION_EVENTS_EXCHANGE, true, false);
-    }
-
-    /**
-     * Binding между очередью и exchange
-     */
     @Bean
     public Binding recommendationEventsBinding(Queue recommendationEventsQueue,
-                                               DirectExchange recommendationEventsExchange) {
+                                               TopicExchange recommendationEventsExchange) {
         return BindingBuilder.bind(recommendationEventsQueue)
                 .to(recommendationEventsExchange)
                 .with(RECOMMENDATION_EVENTS_ROUTING_KEY);
     }
 
+    @Bean
+    public TopicExchange recommendationEventsDeadLetterExchange() {
+        return new TopicExchange(RECOMMENDATION_EVENTS_DLX, true, false);
+    }
+
+    @Bean
+    public Queue recommendationEventsDeadLetterQueue() {
+        return QueueBuilder.durable(RECOMMENDATION_EVENTS_DLQ).build();
+    }
+
+    @Bean
+    public Binding recommendationEventsDeadLetterBinding(Queue recommendationEventsDeadLetterQueue,
+                                                         TopicExchange recommendationEventsDeadLetterExchange) {
+        return BindingBuilder.bind(recommendationEventsDeadLetterQueue)
+                .to(recommendationEventsDeadLetterExchange)
+                .with(RECOMMENDATION_EVENTS_DLQ);
+    }
+
+    // ---------- Saga-события аренды от C#-сервисов (MassTransit) ----------
+
     /**
-     * Очередь для отправки ответов с рекомендациями
+     * Exchange saga-событий аренды. Durable fanout — ровно так его
+     * объявляет MassTransit на стороне RentalService
+     * (SetEntityName для IRentalEvents), параметры должны совпадать.
      */
     @Bean
-    public Queue recommendationsResponseQueue() {
-        return new Queue(RECOMMENDATIONS_RESPONSE_QUEUE, true, false, false);
+    public FanoutExchange rentalEventsExchange() {
+        return new FanoutExchange(RENTAL_EVENTS_EXCHANGE, true, false);
     }
 
     /**
-     * Direct Exchange для отправки ответов
+     * Очередь рекомендаций на saga-событиях аренды.
+     * Сообщения здесь — MassTransit-конверты, поэтому очередь отдельная
+     * от {@link #recommendationEventsQueue()} с её plain-JSON контрактом.
      */
     @Bean
-    public DirectExchange recommendationsResponseExchange() {
-        return new DirectExchange(RECOMMENDATIONS_RESPONSE_EXCHANGE, true, false);
+    public Queue rentalEventsQueue() {
+        return QueueBuilder.durable(RENTAL_EVENTS_QUEUE)
+                .deadLetterExchange(RECOMMENDATION_EVENTS_DLX)
+                .deadLetterRoutingKey(RENTAL_EVENTS_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Binding rentalEventsBinding(Queue rentalEventsQueue, FanoutExchange rentalEventsExchange) {
+        return BindingBuilder.bind(rentalEventsQueue).to(rentalEventsExchange);
+    }
+
+    @Bean
+    public Queue rentalEventsDeadLetterQueue() {
+        return QueueBuilder.durable(RENTAL_EVENTS_DLQ).build();
+    }
+
+    @Bean
+    public Binding rentalEventsDeadLetterBinding(Queue rentalEventsDeadLetterQueue,
+                                                 TopicExchange recommendationEventsDeadLetterExchange) {
+        return BindingBuilder.bind(rentalEventsDeadLetterQueue)
+                .to(recommendationEventsDeadLetterExchange)
+                .with(RENTAL_EVENTS_DLQ);
     }
 
     /**
-     * Binding для ответов
+     * JSON-конвертер. Spring Boot автоматически подставит его
+     * и в {@link org.springframework.amqp.rabbit.core.RabbitTemplate},
+     * и в listener container factory — отдельные бины не нужны.
      */
     @Bean
-    public Binding recommendationsResponseBinding(Queue recommendationsResponseQueue,
-                                                  DirectExchange recommendationsResponseExchange) {
-        return BindingBuilder.bind(recommendationsResponseQueue)
-                .to(recommendationsResponseExchange)
-                .with(RECOMMENDATIONS_RESPONSE_ROUTING_KEY);
-    }
-
-    /**
-     * RabbitTemplate для отправки сообщений
-     */
-    @Bean
-    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
-        RabbitTemplate template = new RabbitTemplate(connectionFactory);
-        template.setMessageConverter(new Jackson2JsonMessageConverter());
-        return template;
+    public MessageConverter jsonMessageConverter() {
+        return new Jackson2JsonMessageConverter();
     }
 }
-

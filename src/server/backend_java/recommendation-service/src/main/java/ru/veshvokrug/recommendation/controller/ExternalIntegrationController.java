@@ -4,11 +4,12 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.veshvokrug.recommendation.controller.dto.RecommendationResponse;
+import ru.veshvokrug.recommendation.event.EventType;
 import ru.veshvokrug.recommendation.event.RecommendationEventDto;
+import ru.veshvokrug.recommendation.publisher.RecommendationEventPublisher;
 import ru.veshvokrug.recommendation.service.RecommendationService;
 
 import java.util.List;
@@ -27,13 +28,13 @@ import java.util.UUID;
 public class ExternalIntegrationController {
 
     private final RecommendationService recommendationService;
-    private final KafkaTemplate<String, RecommendationEventDto> kafkaTemplate;
+    private final RecommendationEventPublisher eventPublisher;
 
     public ExternalIntegrationController(
             RecommendationService recommendationService,
-            KafkaTemplate<String, RecommendationEventDto> kafkaTemplate) {
+            RecommendationEventPublisher eventPublisher) {
         this.recommendationService = recommendationService;
-        this.kafkaTemplate = kafkaTemplate;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -89,6 +90,12 @@ public class ExternalIntegrationController {
                 return ResponseEntity.badRequest().body("eventType must not be blank");
             }
 
+            // Неизвестный тип молча отбрасывается консьюмером — лучше сразу
+            // вернуть 400, чтобы интегрирующаяся сторона увидела опечатку
+            if (EventType.fromValue(request.eventType()) == null) {
+                return ResponseEntity.badRequest().body("Unknown eventType: " + request.eventType());
+            }
+
             if (request.categorySlug() == null || request.categorySlug().isBlank()) {
                 return ResponseEntity.badRequest().body("categorySlug must not be blank");
             }
@@ -103,8 +110,8 @@ public class ExternalIntegrationController {
                     request.timestamp() > 0 ? request.timestamp() : System.currentTimeMillis()
             );
 
-            // Отправить в Kafka
-            kafkaTemplate.send("recommendation_events", request.userId(), event);
+            // Отправить в RabbitMQ
+            eventPublisher.publish(event);
 
             log.debug("REST: Event published successfully: eventId={}", event.eventId());
 
@@ -138,4 +145,3 @@ public class ExternalIntegrationController {
             String message
     ) {}
 }
-

@@ -4,10 +4,11 @@ import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import recommendation.protos.*;
+import ru.veshvokrug.recommendation.event.EventType;
 import ru.veshvokrug.recommendation.event.RecommendationEventDto;
+import ru.veshvokrug.recommendation.publisher.RecommendationEventPublisher;
 import ru.veshvokrug.recommendation.service.RecommendationService;
 
 import java.util.List;
@@ -23,13 +24,13 @@ public class RecommendationGrpcServiceImpl extends RecommendationServiceGrpc.Rec
     private static final Logger log = LoggerFactory.getLogger(RecommendationGrpcServiceImpl.class);
 
     private final RecommendationService recommendationService;
-    private final KafkaTemplate<String, RecommendationEventDto> kafkaTemplate;
+    private final RecommendationEventPublisher eventPublisher;
 
     public RecommendationGrpcServiceImpl(
             RecommendationService recommendationService,
-            KafkaTemplate<String, RecommendationEventDto> kafkaTemplate) {
+            RecommendationEventPublisher eventPublisher) {
         this.recommendationService = recommendationService;
-        this.kafkaTemplate = kafkaTemplate;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -83,7 +84,7 @@ public class RecommendationGrpcServiceImpl extends RecommendationServiceGrpc.Rec
     }
 
     /**
-     * Опубликовать событие рекомендаций в Kafka.
+     * Опубликовать событие рекомендаций в RabbitMQ.
      * Используется для интеграции с C# сервисом и другими микросервисами.
      */
     @Override
@@ -91,7 +92,7 @@ public class RecommendationGrpcServiceImpl extends RecommendationServiceGrpc.Rec
                                            StreamObserver<PublishRecommendationEventResponse> responseObserver) {
         try {
             // Валидация
-            if (request.getEventId() == null || request.getEventId().isBlank()) {
+            if (request.getEventId().isBlank()) {
                 responseObserver.onError(
                         Status.INVALID_ARGUMENT
                                 .withDescription("eventId must not be empty")
@@ -100,7 +101,7 @@ public class RecommendationGrpcServiceImpl extends RecommendationServiceGrpc.Rec
                 return;
             }
 
-            if (request.getUserId() == null || request.getUserId().isBlank()) {
+            if (request.getUserId().isBlank()) {
                 responseObserver.onError(
                         Status.INVALID_ARGUMENT
                                 .withDescription("userId must not be empty")
@@ -109,7 +110,6 @@ public class RecommendationGrpcServiceImpl extends RecommendationServiceGrpc.Rec
                 return;
             }
 
-            request.getEventType();
             if (request.getEventType().isBlank()) {
                 responseObserver.onError(
                         Status.INVALID_ARGUMENT
@@ -119,7 +119,15 @@ public class RecommendationGrpcServiceImpl extends RecommendationServiceGrpc.Rec
                 return;
             }
 
-            request.getCategorySlug();
+            if (EventType.fromValue(request.getEventType()) == null) {
+                responseObserver.onError(
+                        Status.INVALID_ARGUMENT
+                                .withDescription("Unknown eventType: " + request.getEventType())
+                                .asException()
+                );
+                return;
+            }
+
             if (request.getCategorySlug().isBlank()) {
                 responseObserver.onError(
                         Status.INVALID_ARGUMENT
@@ -153,12 +161,8 @@ public class RecommendationGrpcServiceImpl extends RecommendationServiceGrpc.Rec
                     request.getTimestamp()
             );
 
-            // Отправить в Kafka
-            kafkaTemplate.send(
-                    "recommendation_events",
-                    request.getUserId(),
-                    event
-            );
+            // Отправить в RabbitMQ
+            eventPublisher.publish(event);
 
             // Построить успешный ответ
             PublishRecommendationEventResponse response = PublishRecommendationEventResponse.newBuilder()

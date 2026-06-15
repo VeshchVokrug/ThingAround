@@ -19,5 +19,7 @@ public interface PeriodRepository extends JpaRepository<Period, UUID> {
 
 	Optional<Period> findByRentalListingIdAndStatus(UUID rentalListingId, PeriodStatus status);
 
+	Optional<Period> findByPendingBookingIdAndStatus(UUID pendingBookingId, PeriodStatus status);
+
 	List<Period> findByStatusAndEndDateBefore(PeriodStatus status, LocalDate date);
 }

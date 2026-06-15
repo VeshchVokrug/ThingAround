@@ -95,7 +95,12 @@ class ListingServiceIntegrationTest extends PostgresTestcontainersSupport {
         assertThat(ownershipShareRepository.countByCoownershipListing_IdAndOwnerIdIsNull(listing.getId()))
                 .isEqualTo(6);
         assertThat(notificationRepository.count()).isZero();
-        assertThat(outboxMessageRepository.count()).isZero();
+        // Создание листинга кладёт в outbox команду синхронизации с каталогом
+        List<OutboxMessage> outbox = outboxMessageRepository.findAll();
+        assertThat(outbox).hasSize(1);
+        assertThat(outbox.getFirst().getEventType()).isEqualTo("CATALOG_LISTING_CREATE");
+        assertThat(outbox.getFirst().getDestination())
+                .isEqualTo(ru.veshvokrug.coownership.model.OutboxDestination.CATALOG_RABBITMQ);
     }
 
     @Test
@@ -120,8 +125,10 @@ class ListingServiceIntegrationTest extends PostgresTestcontainersSupport {
         assertThat(ownerNotifications.getFirst().getExpiresAt()).isAfter(ownerNotifications.getFirst().getCreatedAt());
 
         assertThat(notificationRepository.count()).isEqualTo(1);
-        OutboxMessage outboxMessage = outboxMessageRepository.findAll().getFirst();
-        assertThat(outboxMessage.getEventType()).isEqualTo("SHARE_APPLICATION_CREATED");
+        OutboxMessage outboxMessage = outboxMessageRepository.findAll().stream()
+                .filter(message -> "SHARE_APPLICATION_CREATED".equals(message.getEventType()))
+                .findFirst()
+                .orElseThrow();
         assertThat(outboxMessage.getPayload()).contains("\"sharesCount\": 2");
     }
 
@@ -164,7 +171,9 @@ class ListingServiceIntegrationTest extends PostgresTestcontainersSupport {
             assertThat(assignedShares).hasSize(6);
             assertThat(ownershipShareRepository.countByCoownershipListing_IdAndOwnerIdIsNull(listing.getId())).isZero();
             assertThat(notificationRepository.count()).isEqualTo(4);
-            assertThat(outboxMessageRepository.count()).isEqualTo(5);
+            // 2 SHARE_APPLICATION_CREATED + 2 APPROVED + COOWNERSHIP_FILLED_OUT
+            // + CATALOG_LISTING_CREATE + 2 CATALOG_LISTING_UPDATE
+            assertThat(outboxMessageRepository.count()).isEqualTo(8);
         } finally {
             executor.shutdownNow();
         }
@@ -186,7 +195,8 @@ class ListingServiceIntegrationTest extends PostgresTestcontainersSupport {
         assertThat(ownershipShareRepository.countByCoownershipListing_IdAndOwnerIdIsNull(listing.getId()))
                 .isEqualTo(3);
         assertThat(notificationRepository.count()).isEqualTo(2);
-        assertThat(outboxMessageRepository.count()).isEqualTo(2);
+        // SHARE_APPLICATION_CREATED + REJECTED + CATALOG_LISTING_CREATE
+        assertThat(outboxMessageRepository.count()).isEqualTo(3);
     }
 
     private CoownershipListing createListing(int totalShares) {

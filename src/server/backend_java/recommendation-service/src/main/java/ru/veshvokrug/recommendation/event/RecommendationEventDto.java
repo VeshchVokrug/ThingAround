@@ -3,7 +3,7 @@ package ru.veshvokrug.recommendation.event;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * DTO события рекомендаций, которое потребляется из Kafka.
+ * DTO события рекомендаций, которое потребляется из RabbitMQ.
  * Описывает пользовательскую активность: просмотры, избранное, бронирования и т.д.
  *
  * @author Dmitrii Marchenko

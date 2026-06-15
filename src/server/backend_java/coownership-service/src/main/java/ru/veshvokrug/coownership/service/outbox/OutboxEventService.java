@@ -1,4 +1,4 @@
-package ru.veshvokrug.coownership.service;
+package ru.veshvokrug.coownership.service.outbox;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
