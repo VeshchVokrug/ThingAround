@@ -267,6 +267,13 @@ services:
       - SPRING_RABBITMQ_USERNAME=admin
       - SPRING_RABBITMQ_PASSWORD=admin
       - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - GRPC_SERVER_PORT=50054
+    networks:
+      - thingaround-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
   
 networks:
   thingaround-network:
