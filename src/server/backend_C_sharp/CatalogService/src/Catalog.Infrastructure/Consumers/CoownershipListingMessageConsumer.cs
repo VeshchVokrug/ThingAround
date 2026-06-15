@@ -27,13 +27,11 @@ public class CoownershipListingMessageConsumer : IConsumer<CoownershipListingMes
         switch (message.Action)
         {
             case CoownershipListingAction.Create:
-                await _service.CreateListingAsync(message.ToCreateDto(), message.OwnerId, context.CancellationToken);
-                return;
             case CoownershipListingAction.Update:
-                await _service.UpdateListingAsync(message.ToDto(), message.OwnerId, context.CancellationToken);
+                await _service.UpsertListingAsync(message.ToDto(), context.CancellationToken);
                 return;
             case CoownershipListingAction.Delete:
-                await _service.RemoveListingAsync(message.ListingId, message.OwnerId, context.CancellationToken);
+                await _service.RemoveListingAsync(message.ListingId, message.Version, message.OwnerId, context.CancellationToken);
                 return;
             default:
                 throw new ArgumentOutOfRangeException();
@@ -43,22 +41,6 @@ public class CoownershipListingMessageConsumer : IConsumer<CoownershipListingMes
 
 internal static class CoownershipListingMessageMapper
 {
-    public static CreateCoownershipListingDto ToCreateDto(this CoownershipListingMessage message)
-    {
-        return new CreateCoownershipListingDto
-        {
-            CatalogListingId = message.CatalogListingId,
-            CategorySlug = message.CategorySlug,
-            Title = message.Title,
-            Description = message.Description,
-            ImagesUrls = message.ImagesUrls,
-            City = message.City,
-            SharePrice = message.SharePrice,
-            TotalShares = message.TotalShares,
-            FundingDeadline = message.FundingDeadline
-        };
-    }
-
     public static CoownershipListingDto ToDto(this CoownershipListingMessage message)
     {
         return new CoownershipListingDto

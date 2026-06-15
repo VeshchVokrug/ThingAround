@@ -61,45 +61,107 @@ public class CoownershipListingService : ICoownershipListingService
         return await _repository.GetAllByUserAsync(ownerId, ct);
     }
 
-    public async Task<Guid> CreateListingAsync(CreateCoownershipListingDto dto, Guid? ownerId = null, CancellationToken ct = default)
+    public async Task UpsertListingAsync(CoownershipListingDto dto, CancellationToken ct = default)
     {
-        var currentOwnerId = ownerId ?? _userContext.UserId;
-        if (currentOwnerId == Guid.Empty)
+        if (dto.Version <= 0)
         {
-            throw new AuthenticationException("User id is empty.");
+            throw new ArgumentException("Version must be greater than zero.");
+        }
+        
+        var existingListing = await _repository.GetAsync(dto.Id, ct);
+
+        if (existingListing != null)
+        {
+            if (dto.Version <= existingListing.Version)
+            {
+                _logger.LogInformation(
+                    "Skipping update for listing {ListingId}. Incoming version: {IncomingVersion}, Existing version: {ExistingVersion}", 
+                    dto.Id, dto.Version, existingListing.Version);
+                return;
+            }
+            
+            existingListing.Title = dto.Title;
+            existingListing.Description = dto.Description;
+            existingListing.CategorySlug = dto.CategorySlug;
+            existingListing.City = dto.City;
+            existingListing.ImagesUrls = dto.ImagesUrls;
+            existingListing.SharePrice = dto.SharePrice;
+            existingListing.TotalShares = dto.TotalShares;
+            existingListing.AvailableShares = dto.AvailableShares;
+            existingListing.CatalogListingId = dto.CatalogListingId;
+            existingListing.FundingDeadline = dto.FundingDeadline;
+            existingListing.IsActive = dto.IsActive;
+            existingListing.UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime;
+            existingListing.Version = dto.Version;
+            
+            if (existingListing.Title != dto.Title || string.IsNullOrEmpty(existingListing.TitleSlug))
+            {
+                existingListing.TitleSlug = $"{_slugHelper.GenerateSlug(dto.Title)}-{_random.Next()}";
+            }
+
+            await _repository.UpdateAsync(existingListing, dto.OwnerId, ct);
+        }
+        else
+        {
+            var newListing = new CoownershipListing
+            {
+                Id = dto.Id,
+                TitleSlug = $"{_slugHelper.GenerateSlug(dto.Title)}-{_random.Next()}",
+                Title = dto.Title,
+                Description = dto.Description,
+                OwnerId = dto.OwnerId,
+                CategorySlug = dto.CategorySlug,
+                City = dto.City,
+                ImagesUrls = dto.ImagesUrls,
+                SharePrice = dto.SharePrice,
+                TotalShares = dto.TotalShares,
+                AvailableShares = dto.TotalShares,
+                CatalogListingId = dto.CatalogListingId,
+                FundingDeadline = dto.FundingDeadline,
+                IsActive = dto.IsActive,
+                CreatedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                Version = dto.Version
+            };
+
+            if (newListing.OwnerId == Guid.Empty)
+            {
+                throw new AuthenticationException("User id is empty.");
+            }
+
+            await _repository.CreateAsync(newListing, ct);
         }
 
-        var listing = new CoownershipListing
-        {
-            TitleSlug = $"{_slugHelper.GenerateSlug(dto.Title)}-{_random.Next()}",
-            Title = dto.Title,
-            Description = dto.Description,
-            OwnerId = currentOwnerId,
-            CategorySlug = dto.CategorySlug,
-            City = dto.City,
-            ImagesUrls = dto.ImagesUrls,
-            SharePrice = dto.SharePrice,
-            TotalShares = dto.TotalShares,
-            AvailableShares = dto.TotalShares,
-            CatalogListingId = dto.CatalogListingId,
-            FundingDeadline = dto.FundingDeadline,
-            IsActive = true,
-            CreatedAt = _timeProvider.GetUtcNow().UtcDateTime,
-            UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime,
-        };
-
-        var listingId = await _repository.CreateAsync(listing, ct);
         await _repository.SaveChangesAsync(ct);
-
-        return listingId;
     }
 
-    public async Task RemoveListingAsync(Guid listingId, Guid? ownerId = null, CancellationToken ct = default)
+
+    public async Task RemoveListingAsync(Guid listingId, int? version = null, Guid? ownerId = null, CancellationToken ct = default)
     {
         var currentOwnerId = ownerId ?? (_userContext.IsAdmin ? null : _userContext.UserId);
+        
+        var listing = await _repository.GetAsync(listingId, ct);
 
+        if (listing == null)
+        {
+            _logger.LogInformation("Listing {ListingId} already deleted or does not exist.", listingId);
+            return;
+        }
+        
+        if (currentOwnerId != null && listing.OwnerId != currentOwnerId)
+        {
+            throw new ForbiddenOrNotFoundException("Объявление совладения", listingId);
+        }
+        
+        if (version.HasValue && version.Value <= listing.Version)
+        {
+            _logger.LogInformation(
+                "Skipping delete for listing {ListingId}. Message version {MessageVersion} is older or equal to current version {CurrentVersion}.", 
+                listingId, version.Value, listing.Version);
+            return;
+        }
+        
         var success = await _repository.RemoveAsync(listingId, currentOwnerId, ct);
-
         if (!success)
         {
             throw new ForbiddenOrNotFoundException("Объявление совладения", listingId);
@@ -118,25 +180,6 @@ public class CoownershipListingService : ICoownershipListingService
     {
         var currentOwnerId = ownerId ?? (_userContext.IsAdmin ? null : _userContext.UserId);
         await ExecuteStateChangeAsync(listingId, currentOwnerId, true, ct);
-    }
-
-    public async Task UpdateListingAsync(CoownershipListingDto dto, Guid? ownerId = null, CancellationToken ct = default)
-    {
-        var currentOwnerId = ownerId ?? (_userContext.IsAdmin ? null : _userContext.UserId);
-        dto.TitleSlug = $"{_slugHelper.GenerateSlug(dto.Title)}-{_random.Next()}";
-
-        if (dto.Version <= 0)
-        {
-            throw new ArgumentException("Version must be greater than zero.");
-        }
-
-        var updated = await _repository.UpdateAsync(dto, currentOwnerId, ct);
-        if (!updated)
-        {
-            throw new ForbiddenOrNotFoundException("Объявление совладения", dto.Id);
-        }
-
-        await _repository.SaveChangesAsync(ct);
     }
 
     private async Task ExecuteStateChangeAsync(Guid listingId, Guid? ownerId, bool isActive, CancellationToken ct)
